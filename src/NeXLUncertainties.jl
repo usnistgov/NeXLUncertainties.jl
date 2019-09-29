@@ -1,8 +1,6 @@
 module NeXLUncertainties
 
-
-include("uncertainty.jl")
-
+include("uncertainValue.jl")
 export UncertainValue # A simple value with uncertainty
 export multiply # multiply UncertainValue structs
 export divide # divide UncertainValue structs
@@ -18,7 +16,10 @@ export isequal # Check UncertainValue structs for equality
 export approx # Check UncertainValue structs for approximate quality
 export equivalent # Check whether two UncertainValue are equivalent values
 export uncertainty # k-σ uncertainty
+export σ # Sigma
 export value # Value portion
+
+include("uncertainValues.jl")
 export extract # Extract a portion of the covariance matrix
 export uv # Constructs an UncertainValue from values v,σ or string "v ± σ"
 export Label # Abstract type to label variables in a UncertainValues object
@@ -31,6 +32,5 @@ export labels # The labels for the values in an UncertainValues object
 export cat # Combine UncertainValues objects into a single UncertainValues object
 export σ # Sigma
 export fractional # fractional uncertainty
-export bound # bound(min, max, val)
 
 end
