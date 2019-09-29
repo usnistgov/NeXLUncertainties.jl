@@ -294,7 +294,7 @@ Base.:*(aa::Diagonal{Float64}, uvs::UncertainValues) =
 Combines the disjoint UncertainValues in uvss into a single UncertainValues object.
 """
 function Base.cat(uvss::AbstractArray{UncertainValues})::UncertainValues
-    all = Dict{<:Label,Int}()
+    all = Dict{Label,Int}()
     next = 1
     for uvs in uvss
         for lbl in labels(uvs)
