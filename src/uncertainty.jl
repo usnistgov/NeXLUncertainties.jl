@@ -224,23 +224,39 @@ function checkcovariance!(cov::SparseMatrixCSC{Float64,Int}, tol=1.0e-12)::Bool
     true
 end
 
+abstract type Label end
+
+struct BasicLabel{T} <: Label
+    value::T
+end
+
+label(item::T) where {T} =
+    BasicLabel(item)
+
+Base.show(io::IO, sl::BasicLabel) =
+    print(io,"Label[$(repr(sl.value))]")
+Base.isequal(sl1::BasicLabel{T}, sl2::BasicLabel{T}) where {T}  =
+    isequal(sl1.value,sl2.value)
+Base.isequal(sl1::Label, sl2::Label) =
+    false
+
 """
     UncertainValues
 Represents a set of related variables with the covariance matrix that represents
 the uncertainty relationships between the variables.
 """
 struct UncertainValues
-    labels::Dict{Symbol,Int}
+    labels::Dict{<:Label,Int}
     values::AbstractVector{Float64}
     covariance::AbstractMatrix{Float64}
-    UncertainValues(labels::Dict{Symbol, Int}, values::AbstractVector{Float64}, covar::AbstractMatrix{Float64}) =
+    UncertainValues(labels::Dict{<:Label, Int}, values::AbstractVector{Float64}, covar::AbstractMatrix{Float64}) =
         checkUVS!(labels, values, covar) ? new(labels, values, covar) : error("???")
 end
 
-uvs(labels::AbstractVector{Symbol}, values::AbstractVector{Float64}, covar::AbstractMatrix{Float64}) =
-    UncertainValues(Dict{Symbol,Int}( [ (l, i) for (i, l) in enumerate(labels) ] ), values, covar)
+uvs(labels::AbstractVector{<:Label}, values::AbstractVector{Float64}, covar::AbstractMatrix{Float64}) =
+    UncertainValues(Dict{Label,Int}( [ (l, i) for (i, l) in enumerate(labels) ] ), values, covar)
 
-function checkUVS!(labels::Dict{Symbol, Int}, values::AbstractVector{Float64}, covar::AbstractMatrix{Float64})
+function checkUVS!(labels::Dict{<:Label, Int}, values::AbstractVector{Float64}, covar::AbstractMatrix{Float64})
     if length(labels) ≠ length(values)
         error("The number of labels does not match the number of values.")
     end
@@ -250,14 +266,14 @@ function checkUVS!(labels::Dict{Symbol, Int}, values::AbstractVector{Float64}, c
     checkcovariance!(covar)
 end
 
-σ(lbl::Symbol, uvs::UncertainValues) = sqrt(variance(lbl, uvs))
+σ(lbl::Label, uvs::UncertainValues) = sqrt(variance(lbl, uvs))
 
 """
-    extract(uvs::UncertainValues, labels::Vector{Symbol})::Matrix
+    extract(uvs::UncertainValues, labels::Vector{<:Label})::Matrix
 Extract the covariance matrix associated with the variables specified in labels
 into a Matrix.
 """
-function extract(uvs::UncertainValues, labels::Vector{Symbol})::Matrix
+function extract(uvs::UncertainValues, labels::Vector{<:Label})::Matrix
     m = zeros(length(labels),length(labels))
     for (r,rl) in enumerate(labels)
         for (c,cl) in enumerate(labels)
@@ -278,7 +294,7 @@ Base.:*(aa::Diagonal{Float64}, uvs::UncertainValues) =
 Combines the disjoint UncertainValues in uvss into a single UncertainValues object.
 """
 function Base.cat(uvss::AbstractArray{UncertainValues})::UncertainValues
-    all = Dict{Symbol,Int}()
+    all = Dict{<:Label,Int}()
     next = 1
     for uvs in uvss
         for lbl in labels(uvs)
@@ -308,7 +324,7 @@ function Base.show(io::IO, uvs::UncertainValues)
     trim(str, len) = str[1:min(len,length(str))]*" "^max(0,len-min(len,length(str)))
 
     lbls = labels(uvs)
-    print(io, "Symbol    ")
+    print(io, "Variabl    ")
     print(io, "    Value    ")
     print(io, "          ")
     for l in lbls
@@ -334,12 +350,12 @@ A alphabetically sorted list of the labels
 """
 labels(uvs::UncertainValues) = sort( [ keys(uvs.labels)...], lt= (l,m) -> isless(repr(l),repr(m)))
 
-function Base.getindex(uvs::UncertainValues, lbl::Symbol)::UncertainValue
+function Base.getindex(uvs::UncertainValues, lbl::Label)::UncertainValue
     idx = uvs.labels[lbl]
     UncertainValue(uvs.values[idx], sqrt(uvs.covariance[idx,idx]))
 end
 
-function Base.get(uvs::UncertainValues, lbl::Symbol, def::UncertainValue)::UncertainValue
+function Base.get(uvs::UncertainValues, lbl::Label, def::UncertainValue)::UncertainValue
     idx = get(uvs.labels, lbl, -1)
     return idx ≠ -1 ? UncertainValue(uvs.values[idx], sqrt(uvs.covariance[idx,idx])) : def
 end
@@ -348,45 +364,45 @@ Base.length(uvs::UncertainValues) = length(uvs.labels)
 Base.size(uvs::UncertainValues) = size(uvs.values)
 
 """
-    value(lbl::Symbol, uvs::UncertainValues)
-The value associate with the Symbol.
+    value(lbl::Label, uvs::UncertainValues)
+The value associate with the Label.
 """
-value(lbl::Symbol, uvs::UncertainValues) =
+value(lbl::Label, uvs::UncertainValues) =
     uvs.values[uvs.labels[lbl]]
 
 """
     values(uvs::UncertainValues)
-A Dict containing Symbol => UncertainValue for each row in uvs.
+A Dict containing <:Label => UncertainValue for each row in uvs.
 """
 Base.values(uvs::UncertainValues) =
     Dict( (lbl, uvs[lbl]) for lbl in keys(uvs.labels))
 
 """
-   covariance(lbl1::Symbol, lbl2::Symbol, uvs::UncertainValues)
+   covariance(lbl1::Label, lbl2::Label, uvs::UncertainValues)
 The covariance between the two variables.
 """
-covariance(lbl1::Symbol, lbl2::Symbol, uvs::UncertainValues) =
+covariance(lbl1::Label, lbl2::Label, uvs::UncertainValues) =
     uvs.covariance[uvs.labels[lbl1], uvs.labels[lbl2]]
 
 """
-   variance(lbl::Symbol, uvs::UncertainValues)
-The variance associated with the specified Symbol.
+   variance(lbl::Label, uvs::UncertainValues)
+The variance associated with the specified <:Label.
 """
-variance(lbl::Symbol, uvs::UncertainValues) =
+variance(lbl::Label, uvs::UncertainValues) =
     uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]]
 
 """
-    uncertainty(lbl::Symbol, uvs::UncertainValues, k::Float64=1.0)
+    uncertainty(lbl::Label, uvs::UncertainValues, k::Float64=1.0)
 The uncertainty associated with specified label (k σ where default k=1)
 """
-uncertainty(lbl::Symbol, uvs::UncertainValues, k::Float64=1.0) =
+uncertainty(lbl::Label, uvs::UncertainValues, k::Float64=1.0) =
     k*sqrt(uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]])
 
 struct Jacobian
     entries::AbstractMatrix{Float64}
-    inputs::Dict{Symbol,Int}
-    outputs::Dict{Symbol,Int}
-    Jacobian(input::AbstractArray{Symbol}, output::AbstractArray{Symbol}, entries::AbstractMatrix{Float64}) =
+    inputs::Dict{<:Label,Int}
+    outputs::Dict{<:Label,Int}
+    Jacobian(input::AbstractArray{<:Label}, output::AbstractArray{<:Label}, entries::AbstractMatrix{Float64}) =
         (size(entries)[2] == length(input)) && (size(entries)[1] == length(output)) ?
           new(entries, buildDict(input), buildDict(output)) : error("The output and input lengths must match the row and column dimensions of the matrix.")
 end
