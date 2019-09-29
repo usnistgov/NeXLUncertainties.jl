@@ -1,5 +1,5 @@
 using Test
-using NeXL
+using NeXLUncertainties
 
 using SparseArrays
 
@@ -25,12 +25,6 @@ using SparseArrays
                 @test zero(UncertainValue) == uv(0.0,0.0)
                 @test one(UncertainValue) == uv(1.0,0.0)
 
-                @test zero(UncertainValue)+one(UncertainValue)==one(UncertainValue)
-                @test zero(UncertainValue)*one(UncertainValue)==zero(UncertainValue)
-                @test one(UncertainValue)*zero(UncertainValue)==zero(UncertainValue)
-                @test one(UncertainValue)*one(UncertainValue)==one(UncertainValue)
-                @test one(UncertainValue)*one(UncertainValue)==one(UncertainValue)
-                @test zero(UncertainValue)+zero(UncertainValue)==zero(UncertainValue)
                 @test -one(UncertainValue)==uv(-1.0,0.0)
                 @test +one(UncertainValue)==uv(1.0,0.0)
 
@@ -43,32 +37,10 @@ using SparseArrays
         end
 
         @testset "Operations" begin
-                @test add(uv1,uv2) == uv(1.0+0.8, sqrt(0.1^2+0.001^2))
-                @test uv1+uv2 == uv(1.0+0.8, sqrt(0.1^2+0.001^2))
-                @test add(2.0,uv1,3.0,uv2) == uv(2.0*1.0+3.0*0.8, sqrt((2.0*0.1)^2+(3.0*0.001)^2))
-                @test add(2.0,uv1,3.0,uv2,0.5) == uv(2.0*1.0+3.0*0.8, sqrt((2.0*0.1)^2+(3.0*0.001)^2 + 2.0*2.0*3.0*0.1*0.001*0.5))
-                @test subtract(uv1,uv2) == uv(1.0-0.8, sqrt(0.1^2+0.001^2))
-                @test uv1-uv2 == uv(1.0-0.8, sqrt(0.1^2+0.001^2))
-                @test subtract(uv1,uv2,-0.5) == uv(1.0-0.8, sqrt(0.1^2+0.001^2-2.0*(-0.5)*0.1*0.001))
-                @test subtract(uv1,uv2,0.4) == uv(1.0-0.8, sqrt(0.1^2+0.001^2-2.0*0.4*0.1*0.001))
-                @test subtract(2.0,uv1,3.0,uv2) == uv(2.0*1.0-3.0*0.8, sqrt((2.0*0.1)^2+(3.0*0.001)^2))
-                @test subtract(2.0,uv1,3.0,uv2,0.5) == uv(2.0*1.0-3.0*0.8, sqrt((2.0*0.1)^2+(3.0*0.001)^2 - 2.0*2.0*3.0*0.1*0.001*0.5))
-                @test subtract(2.0,uv1,3.0,uv2,-0.3) == uv(2.0*1.0-3.0*0.8, sqrt((2.0*0.1)^2+(3.0*0.001)^2 - 2.0*2.0*3.0*0.1*0.001*(-0.3)))
-
                 # Values are taken from the NIST Uncertainty Machine (Gauss's Formula (GUM's Linear Approximation))
-                @test isapprox(multiply(uv1,uv2), uv(1.0*0.8, abs(1.0*0.8)*sqrt((0.1/1.0)^2+(0.001/0.8)^2)), atol=1.0e-10)
-                @test isapprox(uv1*uv2, uv(1.0*0.8, abs(1.0*0.8)*sqrt((0.1/1.0)^2+(0.001/0.8)^2)), atol=1.0e-10)
-                @test isapprox(uv2*uv3, uv(-0.72,0.04), atol=1.0e-4)
-                @test isapprox(multiply(uv1,uv2,0.3), uv(0.8, 0.0803), atol=1.0e-4)
-                @test isapprox(multiply(uv2,uv3,0.7), uv(-0.72, 0.0394), atol=1.0e-4)
-                @test isapprox(multiply(uv2,uv3,-0.7), uv(-0.72, 0.0406), atol=1.0e-4)
-                @test isapprox(multiply(3.0,uv2), uv(2.4,0.003),atol=1.0e-10)
                 @test isapprox(3.0*uv2, uv(2.4,0.003),atol=1.0e-10)
                 @test isapprox(uv2*3.0, uv(2.4,0.003),atol=1.0e-10)
 
-                @test isapprox(divide(uv(2.0,0.1),uv(3.0,0.4)),uv(0.666666,0.09493),atol=1.0e-5)
-                @test isapprox(uv(2.0,0.1)/uv(3.0,0.4),uv(0.666666,0.09493),atol=1.0e-5)
-                @test isapprox(uv(2.0,0.1)/uv(3.0,0.4),uv(0.666666,0.09493),atol=1.0e-5)
                 @test isapprox(inv(uv(5.0,0.2)),uv(0.2,0.008),atol=1.0e-5)
                 @test isapprox(1.0/uv(5.0,0.2),uv(0.2,0.008),atol=1.0e-5)
 
@@ -88,7 +60,6 @@ using SparseArrays
         end
 
         @testset "Covariances" begin
-                @test label("Ch[32]")==label("Ch",32)
 
                 cov = [ 0.1^2          -0.3*0.1*0.2   0.0;
                         -0.3*0.1*0.2   0.2^2          0.2*0.2*0.3;
@@ -105,40 +76,39 @@ using SparseArrays
                 @test_throws ErrorException checkcovariance!(bad)
                 @test_throws ErrorException checkcovariance!(sparse(bad))
 
-                lbls = [label("X0"),label("X",1),label("Z")]
+                lbls = [:X0,:X1,:Z]
                 vals=[2.0, 8.0,  12.0]
 
                 uvs1=uvs(lbls,vals,cov)
 
-                @test σ(label("X0"), uvs1)==0.100
-                @test σ(label("X0"), uvs1)==0.100
-                @test σ(label("X",1), uvs1)==0.200
-                @test σ(label("Z"), uvs1)==0.3
-                @test σ(label("Z"), uvs1)==0.3
+                @test σ(:X0, uvs1)==0.100
+                @test σ(:X1, uvs1)==0.200
+                @test σ(:Z, uvs1)==0.3
+                @test σ(:Z, uvs1)==0.3
 
-                @test extract(uvs1,[label("Z"), label("X",1)])==[ cov[3,3] cov[3,2]; cov[2,3] cov[2,2] ]
+                @test extract(uvs1, [:Z, :X1])==[ cov[3,3] cov[3,2]; cov[2,3] cov[2,2] ]
 
-                @test uvs1[label("Z")]==uv(12.0,0.3)
-                @test uvs1[label("X[1]")]==uv(8.0,0.2)
-                @test get(uvs1,label("X[1]"),uv(8.1,0.0))==uv(8.0,0.2)
-                @test get(uvs1,label("Z"),uv(8.1,0.0)) ≠ uv(8.0,0.2)
-                @test get(uvs1,label("Zp"),uv(8.1,0.0)) == uv(8.1,0.0)
+                @test uvs1[:Z]==uv(12.0,0.3)
+                @test uvs1[:X1]==uv(8.0,0.2)
+                @test get(uvs1,:X1,uv(8.1,0.0))==uv(8.0,0.2)
+                @test get(uvs1,:Z,uv(8.1,0.0)) ≠ uv(8.0,0.2)
+                @test get(uvs1,:Zz,uv(8.1,0.0)) == uv(8.1,0.0)
 
                 @test length(uvs1)==3
                 @test size(uvs1) == (3,)
 
-                @test value(label("Z"),uvs1)==12.0
-                @test value(label("X",1),uvs1)==8.0
+                @test value(:Z,uvs1)==12.0
+                @test value(:X1,uvs1)==8.0
 
-                @test covariance(label("X",1), label("Z"), uvs1)==0.2*0.2*0.3
-                @test covariance(label("Z"), label("X",1), uvs1)==0.2*0.2*0.3
+                @test covariance(:X1, :Z, uvs1)==0.2*0.2*0.3
+                @test covariance(:Z, :X1, uvs1)==0.2*0.2*0.3
 
-                @test variance(label("Z"), uvs1)==0.3^2
-                @test variance(label("X",1), uvs1)==0.2^2
+                @test variance(:Z, uvs1)==0.3^2
+                @test variance(:X1, uvs1)==0.2^2
 
-                @test uncertainty(label("Z"), uvs1)==0.3
-                @test uncertainty(label("X",1), uvs1)==0.2
-                @test uncertainty(label("Z"), uvs1, 2.0)==2.0*0.3
-                @test uncertainty(label("X",1), uvs1, 3.0)==3.0*0.2
+                @test uncertainty(:Z, uvs1)==0.3
+                @test uncertainty(:X1, uvs1)==0.2
+                @test uncertainty(:Z, uvs1, 2.0)==2.0*0.3
+                @test uncertainty(:X1, uvs1, 3.0)==3.0*0.2
         end
 end
