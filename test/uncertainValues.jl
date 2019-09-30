@@ -1,5 +1,5 @@
 using Test
-using UncertainValues
+using NeXLUncertainties
 
 using SparseArrays
 
