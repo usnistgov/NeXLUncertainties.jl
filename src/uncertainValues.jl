@@ -3,6 +3,7 @@
 using SparseArrays
 using Printf
 using LinearAlgebra
+using DataFrames
 
 """
     checkcovariance!(cov::AbstractMatrix)
@@ -232,7 +233,7 @@ function Base.getindex(uvs::UncertainValues, lbl::Label)::UncertainValue
     UncertainValue(uvs.values[idx], sqrt(uvs.covariance[idx,idx]))
 end
 
-function Base.get(uvs::UncertainValues, lbl::Label, def::UncertainValue)::UncertainValue
+function Base.get(uvs::UncertainValues, lbl::Label, def::Union{Missing,UncertainValue})::UncertainValue
     idx = get(uvs.labels, lbl, -1)
     return idx ≠ -1 ? UncertainValue(uvs.values[idx], sqrt(uvs.covariance[idx,idx])) : def
 end
@@ -268,6 +269,21 @@ The variance associated with the specified Label.
 """
 variance(lbl::Label, uvs::UncertainValues) =
     uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]]
+
+function tabulate(uvss::AbstractVector{UncertainValues}, withUnc=false)::DataFrame
+    val(uv) = ismissing(uv) ? missing : uv.value
+    sig(uv) = ismissing(uv) ? missing : uv.sigma
+    alllabels = sort(mapreduce(labels,union,uvss), lt= (l,m) -> isless(repr(l),repr(m)))
+    df = DataFrame()
+    for lbl in alllabels
+        df[!,Symbol(repr(lbl))] = [ val(get(uvs,lbl,missing)) for uvs in uvss]
+        if withUnc
+            df[!,Symbol("U($(repr(lbl)))")] = [ sig(get(uvs,lbl,missing)) for uvs in uvss]
+        end
+    end
+    return df
+end
+
 
 """
     uncertainty(lbl::Label, uvs::UncertainValues, k::Float64=1.0)
