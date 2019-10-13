@@ -32,6 +32,5 @@ export labels # The labels for the values in an UncertainValues object
 export cat # Combine UncertainValues objects into a single UncertainValues object
 export σ # Sigma
 export fractional # fractional uncertainty
-export tabulate # Convert a vector of UncertainValues to a DataFrame
 
 end
