@@ -231,7 +231,7 @@ labels(uvs::UncertainValues) = sort([keys(uvs.labels)...], lt = (l, m) -> isless
 
 function Base.getindex(uvs::UncertainValues, lbl::Label)::UncertainValue
     idx = uvs.labels[lbl]
-    UncertainValue(uvs.values[idx], sqrt(uvs.covariance[idx, idx]))
+    return UncertainValue(uvs.values[idx], sqrt(uvs.covariance[idx, idx]))
 end
 
 function Base.get(uvs::UncertainValues, lbl::Label, def::Union{Missing,UncertainValue})::UncertainValue
