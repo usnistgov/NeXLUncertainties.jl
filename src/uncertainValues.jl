@@ -16,7 +16,7 @@ equal they are set equal and when the correlation coefficient is slightly outsid
 [-1,1], it is restricted to within these bounds. Thus the input matrix can be
 modified by this "check" function.
 """
-function checkcovariance!(cov::AbstractMatrix{Float64}, tol = 1.0e-12)::Bool
+function checkcovariance!(cov::AbstractMatrix{Float64}, tol = 1.0e-6)::Bool
     sz = size(cov)
     if length(sz) ≠ 2
         error("The covariance must be a matrix.")
