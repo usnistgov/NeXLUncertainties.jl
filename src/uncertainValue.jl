@@ -12,7 +12,7 @@ struct UncertainValue <: AbstractFloat
         error("σ must be non-negative.")
 end
 
-Base.convert(uvt::Type{UncertainValue}, n::Real) =
+Base.convert(::Type{UncertainValue}, n::Real) =
     typeof(n) == UncertainValue ? n : UncertainValue(convert(Float64, n), 0.0)
 
 Base.zero(::Type{UncertainValue}) = UncertainValue(0.0,0.0)

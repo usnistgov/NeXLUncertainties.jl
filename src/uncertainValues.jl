@@ -270,7 +270,7 @@ The variance associated with the specified Label.
 """
 variance(lbl::Label, uvs::UncertainValues) = uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]]
 
-function tabulate(uvss::AbstractVector{UncertainValues}, withUnc = false)::DataFrame
+function Base.convert(::Type{DataFrame}, uvss::AbstractVector{UncertainValues}, withUnc = false)::DataFrame
     val(uv) = ismissing(uv) ? missing : uv.value
     sig(uv) = ismissing(uv) ? missing : uv.sigma
     alllabels = sort(mapreduce(labels, union, uvss), lt = (l, m) -> isless(repr(l), repr(m)))
