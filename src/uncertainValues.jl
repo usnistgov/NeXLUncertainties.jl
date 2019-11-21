@@ -270,10 +270,17 @@ The variance associated with the specified Label.
 """
 variance(lbl::Label, uvs::UncertainValues) = uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]]
 
-function Base.convert(::Type{DataFrame}, uvss::AbstractVector{UncertainValues}, withUnc = false)::DataFrame
+function NeXLCore.asa( #
+    ::Type{DataFrame},
+    uvss::AbstractVector{UncertainValues},
+    withUnc = false,
+)::DataFrame
     val(uv) = ismissing(uv) ? missing : uv.value
     sig(uv) = ismissing(uv) ? missing : uv.sigma
-    alllabels = sort(mapreduce(labels, union, uvss), lt = (l, m) -> isless(repr(l), repr(m)))
+    alllabels = sort(
+        mapreduce(labels, union, uvss),
+        lt = (l, m) -> isless(repr(l), repr(m)),
+    )
     df = DataFrame()
     for lbl in alllabels
         df[!, Symbol(repr(lbl))] = [val(get(uvs, lbl, missing)) for uvs in uvss]
