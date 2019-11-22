@@ -31,7 +31,7 @@ export label # Construct a Label from a struct
 export labels # The labels for the values in an UncertainValues object
 export cat # Combine UncertainValues objects into a single UncertainValues object
 export σ # Sigma
-export asa # NeXLCore.asa
+export asa # Like an imperfect convert(...)
 export fractional # fractional uncertainty
 
 end

@@ -270,7 +270,7 @@ The variance associated with the specified Label.
 """
 variance(lbl::Label, uvs::UncertainValues) = uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]]
 
-function NeXLCore.asa( #
+function asa( #
     ::Type{DataFrame},
     uvss::AbstractVector{UncertainValues},
     withUnc = false,
