@@ -18,6 +18,15 @@ Base.convert(::Type{UncertainValue}, n::Real) =
 Base.zero(::Type{UncertainValue}) = UncertainValue(0.0,0.0)
 Base.one(::Type{UncertainValue}) = UncertainValue(1.0,0.0)
 
+max(uv1::UncertainValue, uv2::UncertainValue) =
+    uv1.value > uv2.value ? uv1 : uv2
+
+min(uv1::UncertainValue, uv2::UncertainValue) =
+    uv1.value < uv2.value ? uv1 : uv2
+
+sum(xs::NTuple{UncertainValue,N}) =
+    UncertainValue(sum(v->value(x) for x in xs), sqrt(sum(v->variance(x) for x in xs)))
+
 variance(uv::UncertainValue) = uv.sigma^2
 
 """
@@ -53,6 +62,19 @@ multiply(a::Real, B::UncertainValue) =
 
 multiply(A::UncertainValue, b::Real) =
     UncertainValue(convert(Float64,b)*A.value, abs(convert(Float64,b)*A.sigma))
+
+function divide(n::UncertainValue, d::UncertainValue, cc::AbstractFloat)
+    f, sab = n.value/d.value, sqrt(cc*n.sigma*d.sigma)
+    return UncertainValue(f, sqrt(f^2*((n.sigma/n.value)^2+(d.sigma/d.value)^2 - (2.0*sab)/(n.value*d.value))))
+end
+
+function multiply(a::UncertainValue, b::UncertainValue, cc::AbstractFloat)
+    f, sab = a.value*b.value, sqrt(cc*a.sigma*b.sigma)
+    return UncertainValue(f, sqrt(f^2*((a.sigma/a.value)^2+(b.sigma/b.value)^2 + (2.0*sab)/(a.value*b.value))))
+end
+
+add(ka::AbstractFloat, a::UncertainValue, kb::AbstractFloat, b::UncertainValue, cc::AbstractFloat) =
+    UncertainValue(ka*a.value+kb*b.value, sqrt((ka*a.sigma)^2+(kb*b.sigma)^2 + 2.0*ka*kb*sqrt(cc*a.sigma*b.sigma)))
 
 Base.:*(a::Real, B::UncertainValue) = multiply(a,B)
 Base.:*(A::UncertainValue, b::Real) = multiply(A,b)
