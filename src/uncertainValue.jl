@@ -24,7 +24,7 @@ max(uv1::UncertainValue, uv2::UncertainValue) =
 min(uv1::UncertainValue, uv2::UncertainValue) =
     uv1.value < uv2.value ? uv1 : uv2
 
-sum(xs::NTuple{UncertainValue,N}) =
+Base.sum(xs::Tuple{UncertainValue, Vararg{UncertainValue}}) =
     UncertainValue(sum(v->value(x) for x in xs), sqrt(sum(v->variance(x) for x in xs)))
 
 variance(uv::UncertainValue) = uv.sigma^2
