@@ -173,9 +173,9 @@ Combines the disjoint UncertainValues in uvss into a single UncertainValues obje
 """
 function Base.cat(uvss::AbstractArray{UncertainValues})::UncertainValues
     all = Dict{Label,Int}()
-    next = 1
+    next=1
     for uvs in uvss
-        for lbl in labels(uvs)
+        for lbl in keys(uvs)
             if !haskey(all, lbl)
                 all[lbl] = next
                 next += 1
@@ -184,18 +184,18 @@ function Base.cat(uvss::AbstractArray{UncertainValues})::UncertainValues
     end
     len = length(all)
     values, covar = zeros(Float64, len), zeros(Float64, len, len)
+    # Precompute the indexes for speed ( index in all, index in uvs)
     for uvs in uvss
-        for rlbl in labels(uvs)
-            ridx = all[rlbl]
-            values[ridx] = value(rlbl, uvs)
-            for clbl in labels(uvs)
-                cidx = all[clbl]
-                covar[ridx, cidx] = covariance(rlbl, clbl, uvs)
+        idx = [ ( all[lbl[1]], lbl[2] ) for lbl in uvs.labels]
+        for rlbl in idx
+            values[rlbl[1]] = uvs.values[rlbl[2]]
+            for clbl in idx
+                covar[rlbl[1], clbl[1]] = uvs.covariance[rlbl[2], clbl[2]]
             end
         end
     end
-    checkcovariance!(covar)
-    UncertainValues(all, values, covar)
+    NeXLUncertainties.checkcovariance!(covar)
+    return UncertainValues(all, values, covar)
 end
 
 function Base.show(io::IO, uvs::UncertainValues)
@@ -225,9 +225,13 @@ end
 """
     labels(uvs::UncertainValues)
 
-A alphabetically sorted list of the labels
+A alphabetically sorted list of the labels. Warning this can be slow.  Use keys(...) if you
+want just a unordered set of labels.
 """
 labels(uvs::UncertainValues) = sort([keys(uvs.labels)...], lt = (l, m) -> isless(repr(l), repr(m)))
+
+Base.keys(uvs::UncertainValues) = keys(uvs.labels)
+
 
 function Base.getindex(uvs::UncertainValues, lbl::Label)::UncertainValue
     idx = uvs.labels[lbl]
@@ -269,6 +273,11 @@ covariance(lbl1::Label, lbl2::Label, uvs::UncertainValues) = uvs.covariance[uvs.
 The variance associated with the specified Label.
 """
 variance(lbl::Label, uvs::UncertainValues) = uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]]
+
+function uncertainvalue(lbl::Label, uvs::UncertainValues)
+    idx = uvs.labels[lbl]
+    return UncertainValue(uvs.values[idx], sqrt(uvs.covariance[idx, idx]))
+end
 
 function asa( #
     ::Type{DataFrame},

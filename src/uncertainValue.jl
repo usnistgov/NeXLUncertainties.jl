@@ -28,6 +28,7 @@ Base.sum(xs::Tuple{UncertainValue, Vararg{UncertainValue}}) =
     UncertainValue(sum(v->value(x) for x in xs), sqrt(sum(v->variance(x) for x in xs)))
 
 variance(uv::UncertainValue) = uv.sigma^2
+variance(f::Real) = 0.0
 
 """
     σ(uv::UncertainValue)
@@ -35,6 +36,7 @@ variance(uv::UncertainValue) = uv.sigma^2
 Returns the 1-σ uncertainty)
 """
 σ(uv::UncertainValue) = uv.sigma
+σ(f::Real) = 0.0
 
 """
     uncertainty(uv::UncertainValue, k::Real=1.0)
@@ -42,6 +44,7 @@ Returns the 1-σ uncertainty)
 Returns the k-σ uncertainty (defaults to k=1.0)
 """
 uncertainty(uv::UncertainValue, k::Real=1) = k*uv.sigma
+uncertainty(f::Real, k::Real=1) = 0.0
 
 """
     fractional(uv::UncertainValue)
@@ -49,6 +52,7 @@ uncertainty(uv::UncertainValue, k::Real=1) = k*uv.sigma
 Computes the fractional uncertainty.
 """
 fractional(uv::UncertainValue)::Float64 = uv.sigma/uv.value
+fractional(f::Real) = 0.0
 
 """
     value(uv::UncertainValue)
@@ -56,6 +60,7 @@ fractional(uv::UncertainValue)::Float64 = uv.sigma/uv.value
 Returns the value portion. (uv.value)
 """
 value(uv::UncertainValue) = uv.value
+value(f::Real) = f
 
 multiply(a::Real, B::UncertainValue) =
     UncertainValue(convert(Float64,a)*B.value, abs(convert(Float64,a)*B.sigma))
