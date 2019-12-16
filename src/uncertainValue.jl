@@ -156,4 +156,4 @@ function parse(::Type{UncertainValue}, str::AbstractString)::UncertainValue
 end
 
 Base.show(io::IO,  uv::UncertainValue) =
-    print(io, "$(uv.value) ± $(uv.sigma)")
+    @printf(io,"%0.3g ± %0.3g",uv.value,uv.sigma)
