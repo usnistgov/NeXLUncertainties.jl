@@ -1,3 +1,5 @@
+using Printf
+
 """
     UncertainValue
 
@@ -24,11 +26,23 @@ max(uv1::UncertainValue, uv2::UncertainValue) =
 min(uv1::UncertainValue, uv2::UncertainValue) =
     uv1.value < uv2.value ? uv1 : uv2
 
+minimum(uvs::AbstractArray{UncertainValue}) =
+    uvs[findmin(value.(uvs))[1]]
+
+maximum(uvs::AbstractArray{UncertainValue}) =
+    uvs[findmax(value.(uvs))[1]]
+
+median(uvs::AbstractArray{UncertainValue}) =
+    median(value.(uvs))
+
 Base.sum(xs::Tuple{UncertainValue, Vararg{UncertainValue}}) =
     UncertainValue(sum(v->value(x) for x in xs), sqrt(sum(v->variance(x) for x in xs)))
 
 variance(uv::UncertainValue) = uv.sigma^2
 variance(f::Real) = 0.0
+
+isless(uv1::UncertainValue, uv2::UncertainValue) =
+    isequal(uv1.value,uv2.value) ? !isless(uv1.sigma, uv2.sigma) : isless(uv1.value, uv2.value)
 
 """
     σ(uv::UncertainValue)
