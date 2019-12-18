@@ -1,6 +1,6 @@
 name = "NeXLUncertainties"
 uuid = "7127f3d6-1721-46bc-bb38-8fc703dd438e"
-version = "0.0.2"
+version = "0.0.3-dev"
 
 [deps]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
