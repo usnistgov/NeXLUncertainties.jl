@@ -41,8 +41,8 @@ Base.sum(xs::Tuple{UncertainValue, Vararg{UncertainValue}}) =
 variance(uv::UncertainValue) = uv.sigma^2
 variance(f::Real) = 0.0
 
-isless(uv1::UncertainValue, uv2::UncertainValue) =
-    isequal(uv1.value,uv2.value) ? !isless(uv1.sigma, uv2.sigma) : isless(uv1.value, uv2.value)
+Base.isless(uv1::UncertainValue, uv2::UncertainValue) =
+    isequal(uv1.value, uv2.value) ? !isless(uv1.sigma, uv2.sigma) : isless(uv1.value, uv2.value)
 
 """
     σ(uv::UncertainValue)
