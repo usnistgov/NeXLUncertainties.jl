@@ -20,26 +20,64 @@ Base.convert(::Type{UncertainValue}, n::Real) =
 Base.zero(::Type{UncertainValue}) = UncertainValue(0.0,0.0)
 Base.one(::Type{UncertainValue}) = UncertainValue(1.0,0.0)
 
-max(uv1::UncertainValue, uv2::UncertainValue) =
-    uv1.value > uv2.value ? uv1 : uv2
+"""
+    max(uv1::UncertainValue, uv2::UncertainValue)
 
-min(uv1::UncertainValue, uv2::UncertainValue) =
-    uv1.value < uv2.value ? uv1 : uv2
+Determines the maximum of two values by comparing first the value and second the
+uncertainty. (Equal value defer to the larger uncertainty being considered the 'max'.)
 
-minimum(uvs::AbstractArray{UncertainValue}) =
-    uvs[findmin(value.(uvs))[1]]
+If `value(uv1)==value(uv2)` then it is undefined which is larger but to ensure a constant
+ordering I define the one with a larger uncertainty to be larger since it is more probable
+that it could be larger.
+"""
+Base.max(uv1::UncertainValue, uv2::UncertainValue) =
+    uv1.value ≠ uv2.value ? (uv1.value > uv2.value ? uv1 : uv2) : (uv1.sigma > uv2.sigma ? uv1 : uv2)
 
-maximum(uvs::AbstractArray{UncertainValue}) =
-    uvs[findmax(value.(uvs))[1]]
+"""
+    min(uv1::UncertainValue, uv2::UncertainValue)
 
-median(uvs::AbstractArray{UncertainValue}) =
-    median(value.(uvs))
+Determines the maximum of two values by comparing first the value and second the
+uncertainty. (Equal value defer to the larger uncertainty being considered the 'min'.)
+
+If `value(uv1)==value(uv2)` then it is undefined which is smaller but to ensure a constant
+ordering I define the one with a larger uncertainty to be smaller since it is more probable
+that it could be smaller.
+"""
+Base.min(uv1::UncertainValue, uv2::UncertainValue) =
+    uv1.value ≠ uv2.value ? (uv1.value > uv2.value ? uv2 : uv1) : (uv1.sigma > uv2.sigma ? uv1 : uv2)
+
+Base.minimum(uvs::AbstractArray{UncertainValue}) =
+    reduce(min, uvs)
+
+Base.minimum(xs::Tuple{UncertainValue, Vararg{UncertainValue}}) =
+    reduce(min, xs)
+
+Base.maximum(uvs::AbstractArray{UncertainValue}) =
+    reduce(max, uvs)
+
+Base.maximum(xs::Tuple{UncertainValue, Vararg{UncertainValue}}) =
+    reduce(max, xs)
 
 Base.sum(xs::Tuple{UncertainValue, Vararg{UncertainValue}}) =
     UncertainValue(sum(v->value(x) for x in xs), sqrt(sum(v->variance(x) for x in xs)))
 
+Base.sum(uvs::AbstractArray{UncertainValue}) =
+    UncertainValue(sum(v->value(x) for x in uvs), sqrt(sum(v->variance(x) for x in uvs)))
+
+"""
+    variance(uv::UncertainValue)
+
+Returns σ².
+"""
 variance(uv::UncertainValue) = uv.sigma^2
-variance(f::Real) = 0.0
+
+
+"""
+    variance(f::Real)
+
+Returns 0.
+"""
+variance(f::Real) = zero(typeof(f))
 
 Base.isless(uv1::UncertainValue, uv2::UncertainValue) =
     isequal(uv1.value, uv2.value) ? !isless(uv1.sigma, uv2.sigma) : isless(uv1.value, uv2.value)
@@ -50,7 +88,14 @@ Base.isless(uv1::UncertainValue, uv2::UncertainValue) =
 Returns the 1-σ uncertainty)
 """
 σ(uv::UncertainValue) = uv.sigma
-σ(f::Real) = 0.0
+
+
+"""
+    σ(r::Real)
+
+Returns 0.
+"""
+σ(f::Real) = zero(typeof(f))
 
 """
     uncertainty(uv::UncertainValue, k::Real=1.0)
@@ -58,15 +103,27 @@ Returns the 1-σ uncertainty)
 Returns the k-σ uncertainty (defaults to k=1.0)
 """
 uncertainty(uv::UncertainValue, k::Real=1) = k*uv.sigma
-uncertainty(f::Real, k::Real=1) = 0.0
+
+"""
+    uncertainty(f::Real, k::Real=1.0)
+
+Returns 0.0.
+"""
+uncertainty(f::Real, k::Real=1) = zero(typeof(f))
 
 """
     fractional(uv::UncertainValue)
 
 Computes the fractional uncertainty.
 """
-fractional(uv::UncertainValue)::Float64 = uv.sigma/uv.value
-fractional(f::Real) = 0.0
+fractional(uv::UncertainValue)::Float64 = abs(uv.sigma/uv.value)
+
+"""
+    fractional(f::Real)
+
+Returns 0
+"""
+fractional(f::Real) = zero(typeof(f))
 
 """
     value(uv::UncertainValue)
@@ -74,29 +131,72 @@ fractional(f::Real) = 0.0
 Returns the value portion. (uv.value)
 """
 value(uv::UncertainValue) = uv.value
+
+"""
+    value(f::Real)
+
+Returns f
+"""
 value(f::Real) = f
 
-multiply(a::Real, B::UncertainValue) =
-    UncertainValue(convert(Float64,a)*B.value, abs(convert(Float64,a)*B.sigma))
+"""
+    pearson(uv1::UncertainValue, uv2::UncertainValue, covar::Real)
 
-multiply(A::UncertainValue, b::Real) =
-    UncertainValue(convert(Float64,b)*A.value, abs(convert(Float64,b)*A.sigma))
+Computes the Pearson correlation coefficient given the covariance between two UncertainValue.
+"""
+function pearson(uv1::UncertainValue, uv2::UncertainValue, covar::Real)
+    res = covar / (σ(uv1) * σ(uv2))
+    @assert (res>=-1.0) & (res<=1.0) "The Pearson correlation coefficient must be on [-1.0, 1.0] - $res"
+    return res
+end
 
+"""
+    covariance(uv1::UncertainValue, uv2::UncertainValue, correlation::Real)
+
+Computes the covariance given the correlation coefficient between two UncertainValue.
+"""
+function covariance(uv1::UncertainValue, uv2::UncertainValue, correlation::Real)
+    @assert (correlation>=-1.0) & (correlation<=1.0) "The Pearson correlation coefficient must be on [-1.0, 1.0] - $correlation"
+    return correlation * σ(uv1) * σ(uv2)
+end
+
+"""
+    divide(n::UncertainValue, d::UncertainValue, cc::AbstractFloat)
+
+Computes `n/d` where `n` and `d` are UncertainValue and `cc` is the correlation coefficient
+defined as `cc = covar(n,d)/( σ(n), σ(d) )`
+"""
 function divide(n::UncertainValue, d::UncertainValue, cc::AbstractFloat)
-    f, sab = n.value/d.value, sqrt(cc*n.sigma*d.sigma)
+    @assert (cc>=-1.0) & (cc<=1.0) "The Pearson correlation coefficient must be on [-1.0, 1.0] - $cc"
+    f, sab = n.value/d.value, covariance(n, d, cc)
     return UncertainValue(f, sqrt(f^2*((n.sigma/n.value)^2+(d.sigma/d.value)^2 - (2.0*sab)/(n.value*d.value))))
 end
 
+"""
+    multiply(a::UncertainValue, b::UncertainValue, cc::AbstractFloat)
+
+Computes `a*b` where `a` and `b` are UncertainValue and `cc` is the correlation coefficient
+defined as `cc = covar(a,b)/( σ(a), σ(b) )`
+"""
 function multiply(a::UncertainValue, b::UncertainValue, cc::AbstractFloat)
-    f, sab = a.value*b.value, sqrt(cc*a.sigma*b.sigma)
+    @assert (cc>=-1.0) & (cc<=1.0) "The Pearson correlation coefficient must be on [-1.0, 1.0] - $cc"
+    f, sab = a.value*b.value, covariance(a, b, cc)
     return UncertainValue(f, sqrt(f^2*((a.sigma/a.value)^2+(b.sigma/b.value)^2 + (2.0*sab)/(a.value*b.value))))
 end
 
-add(ka::AbstractFloat, a::UncertainValue, kb::AbstractFloat, b::UncertainValue, cc::AbstractFloat) =
-    UncertainValue(ka*a.value+kb*b.value, sqrt((ka*a.sigma)^2+(kb*b.sigma)^2 + 2.0*ka*kb*sqrt(cc*a.sigma*b.sigma)))
+"""
+    add(ka::Real, a::UncertainValue, kb::Real, b::UncertainValue, cc::AbstractFloat)
 
-Base.:*(a::Real, B::UncertainValue) = multiply(a,B)
-Base.:*(A::UncertainValue, b::Real) = multiply(A,b)
+Computes `ka*a + kb*b` where `a` and `b` are UncertainValue and `cc` is the correlation
+coefficient defined as `cc = covar(a,b)/( σ(a), σ(b) )`
+"""
+add(ka::Real, a::UncertainValue, kb::Real, b::UncertainValue, cc::AbstractFloat) =
+    UncertainValue(convert(Float64, ka)*a.value+convert(Float64, kb)*b.value, sqrt((ka*a.sigma)^2+(kb*b.sigma)^2 + 2.0*ka*kb*covariance(a,b,cc)))
+
+Base.:*(a::Real, B::UncertainValue) =
+    UncertainValue(convert(Float64,a)*B.value, abs(convert(Float64,a)*B.sigma))
+Base.:*(A::UncertainValue, b::Real) =
+    UncertainValue(convert(Float64,b)*A.value, abs(convert(Float64,b)*A.sigma))
 
 Base.:-(A::UncertainValue) =
     UncertainValue(-A.value,A.sigma)
@@ -106,23 +206,16 @@ Base.:+(A::UncertainValue) =
 Base.abs(A::UncertainValue) =
     A.value>=0.0 ? A : UncertainValue(abs(A.value),A.sigma)
 
-divide(A::UncertainValue, b::Real) =
-    UncertainValue(A.value/convert(Float64,b), abs(A.sigma/convert(Float64,b)))
-
-divide(a::Real, B::UncertainValue) =
+Base.:/(a::Real, B::UncertainValue) =
     UncertainValue(convert(Float64,a)/B.value, abs((convert(Float64,a)*B.sigma)/(B.value*B.value)))
-
-Base.:/(a::Real, B::UncertainValue) = divide(a,B)
-Base.:/(A::UncertainValue, b::Real) = divide(A,b)
+Base.:/(A::UncertainValue, b::Real) =
+    UncertainValue(A.value/convert(Float64,b), abs(A.sigma/convert(Float64,b)))
 
 Base.inv(B::UncertainValue) =
     UncertainValue(1.0/B.value, abs(B.sigma/(B.value^2)))
 
-power(A::UncertainValue, b::Real) =
-    UncertainValue(A.value^b, abs(A.value^(b-one(b)) * b * A.sigma))
-
 Base.:^(A::UncertainValue, b::Real) =
-    power(A,b)
+    UncertainValue(A.value^b, abs(A.value^(b-one(b)) * b * A.sigma))
 
 Base.log(A::UncertainValue) =
     UncertainValue(log(A.value), abs(A.sigma/A.value))
@@ -158,7 +251,7 @@ equivalent(A::UncertainValue, B::UncertainValue, k=1.0) =
 
 uv(val::Real, sigma::Real) = UncertainValue(val, sigma)
 
-function parse(::Type{UncertainValue}, str::AbstractString)::UncertainValue
+function Base.parse(::Type{UncertainValue}, str::AbstractString)::UncertainValue
     sp=split(str, r"(?:\+\-|\-\+|±)" )
     if length(sp)>=1
         val=parse(Float64, sp[1])

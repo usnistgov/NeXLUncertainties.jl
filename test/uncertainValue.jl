@@ -8,14 +8,39 @@ using NeXLUncertainties
 
         @testset "Sigma" begin
                 @test σ(uv1)==uncertainty(uv1)
+                @test σ(1.0) == 0.0
                 @test isequal(uv(1.0,0.1),uv1)
+                @test uv(1.0,0.1) == uv1
                 @test σ(uv1)==0.1
-                @test σ(uv1)==0.1
+                @test σ(uv2)==0.001
+                @test σ(1.0) == 0.0
                 @test variance(uv2)==0.001^2
+                @test variance(1.0) == 0.0
                 @test fractional(uv2)==0.001/0.8
-                @test fractional(uv3)==0.05/-0.9
+                @test fractional(uv3)==abs(0.05/-0.9)
+                @test fractional(0.0) == 0.0
                 @test value(uv2)==0.8
                 @test value(uv3)==-0.9
+                @test value(1.0) == 1.0
+
+                @test min(uv1, uv2) === uv2
+                @test min(uv2, uv3) === uv3
+                @test min(uv1, uv3) === uv3
+                @test min(uv1, UncertainValue(1.0,0.05)) === uv1
+                @test minimum([uv1, uv2, uv3]) === uv3
+                @test minimum( (uv1, uv2, uv3) ) === uv3
+
+                @test max(uv1, uv2) === uv1
+                @test max(uv1, uv2) === uv1
+                @test max(uv1, uv3) === uv1
+                @test max(uv2, UncertainValue(0.8,0.0005)) == uv2
+                @test maximum([uv1, uv2, uv3]) === uv1
+                @test maximum( (uv1, uv2, uv3) ) === uv1
+
+                @test isless(uv1, uv2) == false
+                @test isless(uv2, uv1) == true
+                @test isless(uv(1.0,0.1),uv(1.0,0.2)) == false
+                @test isless(uv(1.0,0.2),uv(1.0,0.1)) == true
         end
 
         @testset "Conversions" begin
@@ -36,9 +61,6 @@ using NeXLUncertainties
                 @test isapprox(inv(uv(5.0,0.2)),uv(0.2,0.008),atol=1.0e-5)
                 @test isapprox(1.0/uv(5.0,0.2),uv(0.2,0.008),atol=1.0e-5)
 
-                @test isapprox(divide(uv(5.0,0.2),3.0),uv(5.0/3.0,0.2/3.0),atol=1.0e-10)
-
-                @test isapprox(power(uv(2.0,0.2),5.0),uv(32.0,16.0),atol=1.0e-5)
                 @test isapprox(uv(2.0,0.2)^5.0,uv(32.0,16.0),atol=1.0e-5)
                 @test isapprox(log(uv(2.0,0.2)),uv(0.693,0.100),atol=1.0e-3)
                 @test isapprox(exp(uv(2.0,0.2)),uv(7.39,1.48),atol=1.0e-2)
@@ -49,5 +71,26 @@ using NeXLUncertainties
 
                 @test equivalent(uv(3.3,0.2),uv(3.5,0.1))
                 @test !equivalent(uv(3.3,0.2),uv(3.6,0.1))
+
+                @test isapprox(multiply( uv(2.3, 0.4), uv(3.1, 0.2), 0.3), uv(7.13, 1.45), atol=0.01)
+                @test isapprox(divide( uv(2.3, 0.4), uv(3.1, 0.2), 0.3), uv(0.742, 0.123), atol=0.001)
+
+                @test isapprox(multiply( uv(2.3, 0.4), uv(3.1, 0.2), -0.2), uv(7.13, 1.23), atol=0.01)
+                @test isapprox(divide( uv(2.3, 0.4), uv(3.1, 0.2), -0.2), uv(0.742, 0.146), atol=0.001)
+
+                @test isapprox(add( -3.0, uv(2.3, 0.4), 4.0, uv(3.1, 0.2), -0.2), uv(5.5, 1.57), atol=0.01)
+                @test isapprox(add( 3.0, uv(2.3, 0.4), -4.0, uv(3.1, 0.2), 0.3), uv(-5.5, 1.23 ), atol=0.01)
+
+                @test isequal(abs(uv(1.0,0.2)), uv(1.0,0.2))
+                @test isequal(abs(uv(-1.0,0.2)), uv(1.0,0.2))
+        end
+        @testset "Parse" begin
+                @test isequal(parse(UncertainValue,"1.0±0.1"), uv(1.0,0.1))
+                @test isequal(parse(UncertainValue,"2.0 ± 0.3"), uv(2.0,0.3))
+                @test isequal(parse(UncertainValue,"-1.0 ± 0.2"), uv(-1.0,0.2))
+                @test isequal(parse(UncertainValue,"12.3 +- 0.12"), uv(12.3,0.12))
+                @test isequal(parse(UncertainValue,"12.3 -+ 0.12"), uv(12.3,0.12))
+                @test isequal(parse(UncertainValue,repr(uv1)), uv1)
+                @test isequal(parse(UncertainValue,repr(uv2)), uv2)
         end
 end
