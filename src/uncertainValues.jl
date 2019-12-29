@@ -121,15 +121,19 @@ struct UncertainValues
     ) = checkUVS!(labels, values, covar) ? new(labels, values, covar) : error("???")
 end
 
-uvs(
+function uvs(
     labels::AbstractVector{<:Label},
     values::AbstractVector{Float64},
     covar::AbstractMatrix{Float64},
-) = UncertainValues(
-    Dict{Label,Int}([(l, i) for (i, l) in enumerate(labels)]),
-    values,
-    covar,
 )
+    @assert length(labels)==length(values)
+    @assert length(labels)==size(covar,1)
+    @assert length(labels)==size(covar,2)
+    return UncertainValues(
+    Dict{Label,Int}(l => i for (i, l) in enumerate(labels)),
+    values,
+    covar)
+end
 
 function checkUVS!(
     labels::Dict{<:Label,Int},

@@ -38,4 +38,13 @@ export σ # Sigma
 export asa # Like an imperfect convert(...)
 export fractional # fractional uncertainty
 
+include("propagate.jl")
+export MeasurementModel
+export LabeledValues
+export propagate
+export mcpropagate
+export compute
+export CarryOver
+export ParallelMeasurementModel
+export SerialMeasurementModel
 end
