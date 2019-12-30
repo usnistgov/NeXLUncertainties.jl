@@ -1,5 +1,8 @@
 using Distributions
 using Random
+using LinearAlgebra
+using Base.Threads
+using Base.Iterators
 
 """
     LabeledValues
@@ -49,7 +52,7 @@ Base.getindex(lv::LabeledValues, lbl::Label)::Float64 =
 
 Returns the index associated with the specified `Label`.
 """
-Base.indexin(lv::LabeledValues, lbl::Label)::Int =
+Base.indexin(lbl::Label, lv::LabeledValues)::Int =
     lv.reverse[lbl]
 
 """
@@ -60,13 +63,15 @@ Is there a value associated with the `Label`?
 haskey(lv::LabeledValues, lbl::Label) =
     haskey(lv.forward, lbl)
 
+keys(lv::LabeledValues) = keys(lv.forward)
+
 """
     labels(lv::LabeledValues)::Vector{Label}
 
 A list of the `Label`s in order.
 """
 function labels(lv::LabeledValues)::Vector{Label}
-    res = Array{Float64}(undef, length(lv.reverse))
+    res = Array{Label}(undef, length(lv.reverse))
     for (lbl, idx) in lv.reverse
         res[idx] = lbl
     end
@@ -85,10 +90,15 @@ The Jacobian has rows defined by the AbstractVector{Label} in the return Tuple a
 columns defined by labels(inputs).  Each element in the Jacobian represents the
 partial derivative of an output value (row) with respect to an input value (column).
 
-    compute(mm::MeasurementModel, inputs::LabeledValues, withJac::Boolean)::
-        Tuple{AbstractVector{Label}, AbstractVector{Float64}, Union{Missing,AbstractMatrix{Float64}}}
+    compute(mm::MeasurementModel, inputs::LabeledValues, withJac::Boolean)::MMReturn
+
+where
+
+    MMReturn = Tuple{AbstractVector{Label}, AbstractVector{Float64}, Union{Missing,AbstractMatrix{Float64}}}
 """
 abstract type MeasurementModel end
+
+const MMReturn = Tuple{AbstractVector{Label}, AbstractVector{Float64}, Union{Missing,AbstractMatrix{Float64}}}
 
 """
     propagate(mm::MeasurementModel, uvs::UncertainValues)::UncertainValues
@@ -134,41 +144,49 @@ in subsequent steps.
 """
 struct CarryOver <: MeasurementModel
     labels::Vector{Label}
+
+    CarryOver(uvs::UncertainValues) = new(naturalorder(uvs))
+    CarryOver(labels::AbstractVector{Label}) = new(labels)
 end
 
-function propagate(mm::CarryOver, inputs::LabeledValues, withJac::Bool)
+function compute(mm::CarryOver, inputs::LabeledValues, withJac::Bool)::MMReturn
     res = collect(map(lbl->value(inputs,lbl), mm.labels))
-    jac = withJac ? Matrix(I, length(mm.labels), length(mm.labels)) : missing
-    return Tuple(copy(labels), res, jac)
+    jac = withJac ? Matrix{Float64}(I, length(mm.labels), length(mm.labels)) : missing
+    return (copy(mm.labels), res, jac)
 end
 
 struct ParallelMeasurementModel <: MeasurementModel
     models::Vector{MeasurementModel}
+    multi::Bool
+
+    ParallelMeasurementModel(models::AbstractVector{MeasurementModel}, multithread=false) =
+        new(models, multithread)
 end
 
-function propagate(mm::ParallelMeasurementModel, inputs::LabeledValues, withJac::Bool)
-    function combine(jacs::Vector{AbstractMatrix{Float64}})
-        dim = ( sum(size(jac,i) for jac in jacs) for i in 1:2 )
-        res = zeros(Float64,dim[1],dim[2])
-        d1,d2=1,1
-        for jac in jacs
-            res[d1:d2,d1+size(jac,1):d2+size(jac,2)] = jac
-            d1, d2 = d1+size(jac,1), d2+size(jac,2)
+function compute(mm::ParallelMeasurementModel, inputs::LabeledValues, withJac::Bool)::MMReturn
+    tmp = Vector{Tuple}(undef, length(mm.models))
+    # This can be readily threaded using Threads.@thread
+    if mm.multi
+        @threads for i in eachindex(mm.models)
+            tmp[i] = compute(mm.models[i], inputs, withJac)
         end
-        return res
+    else
+        for i in eachindex(mm.models)
+            tmp[i] = compute(mm.models[i], inputs, withJac)
+        end
     end
-    tmp = [ compute(model, inputs, withJac) for mm in mm.models ]
-    lbls = flatten([ tmp[i][1] for i in eachindex(tmp) ])
-    res = flatten([ tmp[i][2] for i in eachindex(tmp) ])
-    jac = withJac ? combine([ tmp[i][3] for i in eachindex(tmp)]) : missing
-    return Tuple(lbls, res, jac)
+    lbls = reduce(append!, tmp[i][1] for i in eachindex(tmp))
+    res = reduce(append!, tmp[i][2] for i in eachindex(tmp))
+    jacs = [ tmp[i][3] for i in eachindex(tmp) ]
+    jac = withJac ? vcat(jacs...) : missing
+    return (lbls, res, jac)
 end
 
 struct SerialMeasurementModel <: MeasurementModel
     models::Vector{MeasurementModel}
 end
 
-function propagate(mm::SerialMeasurementModel, inputs::LabeledValues, withJac::Bool)
+function compute(mm::SerialMeasurementModel, inputs::LabeledValues, withJac::Bool)::MMReturn
     current, currjac = inputs, missing
     for model in models
         (lbls, res, jac) = compute(model, current)
@@ -177,5 +195,5 @@ function propagate(mm::SerialMeasurementModel, inputs::LabeledValues, withJac::B
             currjac = ismissing(currjac) ? jac : jac*currjac
         end
     end
-    return Tuple(labels(current), values(current), currjac)
+    return (labels(current), values(current), currjac)
 end

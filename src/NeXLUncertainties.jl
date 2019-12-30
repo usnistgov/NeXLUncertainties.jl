@@ -37,6 +37,7 @@ export cat # Combine UncertainValues objects into a single UncertainValues objec
 export σ # Sigma
 export asa # Like an imperfect convert(...)
 export fractional # fractional uncertainty
+export correlation # Pearson correlation coefficient
 
 include("propagate.jl")
 export MeasurementModel

@@ -1,4 +1,3 @@
-using Revise
 using Test
 using NeXLUncertainties
 using Random
@@ -8,7 +7,7 @@ using Random
     struct TestMeasurementModel <: MeasurementModel end
 
     d(a,b,c) = a + b^2 + c^3
-    e(a,b,c) = sin(a) + cos(b) + sin(a)*cos(c)
+    e(a,b,c) = log(a)+exp(c)
     f(a,b,c) = 3.2*a*b*c
     g(a,b,c) = 2.3*a*b + 1.8*a*c
 
@@ -18,11 +17,11 @@ using Random
 
         outputs = [ label("D"), label("E"), label("F"), label("G") ]
         results =  [ d(a,b,c), e(a,b,c), f(a, b, c), g(a, b, c) ]
-        if withJac
+        if withJac # Compute the Jacobian column-by-column (input-by-input)
             jac = zeros(length(outputs), length(inputs))
-            jac[:, indexin(inputs, la)] = [ 1.0, cos(a)*(1+cos(c)), results[3]/a, 2.3*b + 1.8*c]
-            jac[:, indexin(inputs, lb)] = [ 2.0*b, -sin(b), -results[3]/b, 2.3*a ]
-            jac[:, indexin(inputs, lc)] = [ 3.0*c^2, -sin(a)*sin(c), -results[3]/c, 1.8*a ]
+            jac[:, indexin(la, inputs)] = [ 1.0, 1.0/a, results[3]/a, 2.3*b + 1.8*c]
+            jac[:, indexin(lb, inputs)] = [ 2.0*b, 0, results[3]/b, 2.3*a ]
+            jac[:, indexin(lc, inputs)] = [ 3.0*c^2, exp(c), results[3]/c, 1.8*a ]
         else
             jac=missing
         end
@@ -60,8 +59,15 @@ using Random
     mcres = NeXLUncertainties.mcpropagate(TestMeasurementModel(), inputs, 100000, MersenneTwister(0xFEED))
     println(mcres)
     # Check if the analytical and Monte Carlo agree?
-    @test isapprox(value(mcres[ld]), value(res[ld]), atol = 0.1*σ(res[ld]))
-    @test isapprox(value(mcres[le]), value(res[le]), atol = 0.3*σ(res[le]))
-    @test isapprox(value(mcres[lf]), value(res[lf]), atol = 0.1*σ(res[lf]))
-    @test isapprox(value(mcres[lg]), value(res[lg]), atol = 0.1*σ(res[lg]))
-end
+    @test isapprox(value(mcres[ld]), value(res[ld]), atol = 0.05*σ(res[ld]))
+    @test isapprox(value(mcres[le]), value(res[le]), atol = 0.05*σ(res[le]))
+    @test isapprox(value(mcres[lf]), value(res[lf]), atol = 0.05*σ(res[lf]))
+    @test isapprox(value(mcres[lg]), value(res[lg]), atol = 0.05*σ(res[lg]))
+
+    @test isapprox(covariance(ld,le,mcres),covariance(ld,le,res),atol=0.05*σ(res[ld])*σ(res[le]))
+    @test isapprox(covariance(ld,lf,mcres),covariance(ld,lf,res),atol=0.05*σ(res[ld])*σ(res[lf]))
+    @test isapprox(covariance(ld,lg,mcres),covariance(ld,lg,res),atol=0.05*σ(res[ld])*σ(res[lg]))
+    @test isapprox(covariance(le,lf,mcres),covariance(le,lf,res),atol=0.05*σ(res[le])*σ(res[lf]))
+    @test isapprox(covariance(le,lg,mcres),covariance(le,lg,res),atol=0.05*σ(res[le])*σ(res[lg]))
+    @test isapprox(covariance(lf,lg,mcres),covariance(lf,lg,res),atol=0.05*σ(res[lf])*σ(res[lg]))
+end;

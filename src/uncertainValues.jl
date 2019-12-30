@@ -161,7 +161,7 @@ Returns the 1σ uncertainty associated with the specified label
 
 Returns the Pearson correlation coefficient between variables `a` and `b`.
 """
-correlation(a::Label, b::Label, uvs::UncertainValues) = covariance(a, b) / (σ(a) * σ(b))
+correlation(a::Label, b::Label, uvs::UncertainValues) = covariance(a, b, uvs) / (σ(a, uvs) * σ(b, uvs))
 
 """
     extract(uvs::UncertainValues, labels::Vector{<:Label})::Matrix
@@ -201,7 +201,7 @@ Base.cat(uvss::AbstractArray{UncertainValues})::UncertainValues =
 Combines the disjoint UncertainValues in uvss into a single UncertainValues object.
 """
 function Base.cat(uvss::UncertainValues...)::UncertainValues
-    all = Dict{Label,Int}(lbl => i for (i, lbl) in enumerate(reduce(union, keys.(uvss))))
+    all = Dict{Label,Int}(lbl => i for (i, lbl) in enumerate(reduce(union, Base.keys.(uvss))))
     @assert length(all) == sum(map(uvs -> length(uvs.labels), uvss)) "One or more labels were duplicated in cat(...)"
     len = length(all)
     values, covar = zeros(Float64, len), zeros(Float64, len, len)
@@ -250,9 +250,9 @@ A alphabetically sorted list of the labels. Warning this can be slow.  Use keys(
 want just a unordered set of labels.
 """
 labels(uvs::UncertainValues) =
-    sort([keys(uvs.labels)...], lt = (l, m) -> isless(repr(l), repr(m)))
+    sort([Base.keys(uvs.labels)...], lt = (l, m) -> isless(repr(l), repr(m)))
 
-Base.keys(uvs::UncertainValues) = keys(uvs.labels)
+Base.keys(uvs::UncertainValues) = Base.keys(uvs.labels)
 
 function Base.getindex(uvs::UncertainValues, lbl::Label)::UncertainValue
     idx = uvs.labels[lbl]
@@ -266,7 +266,7 @@ end
 
 Base.length(uvs::UncertainValues) = length(uvs.labels)
 
-eachlabel(uvs::UncertainValues) = keys(uvs.labels)
+eachlabel(uvs::UncertainValues) = Base.keys(uvs.labels)
 
 """
     naturalorder(uvs::UncertainValues)::Vector{<:Label}
@@ -275,7 +275,7 @@ Returns a Vector of Label in the order in which they appear in `uvs.values` and
 `uvs.covariance`.
 """
 function naturalorder(uvs::UncertainValues)::Vector{<:Label}
-    res = Arrray{<:Label}(undef,length(uvs.labels))
+    res = Array{Label}(undef,length(uvs.labels))
     for (k, v) in uvs.labels
         res[v] = k
     end
@@ -294,7 +294,7 @@ value(lbl::Label, uvs::UncertainValues) = uvs.values[uvs.labels[lbl]]
 
 A Dict containing <:Label => UncertainValue for each row in uvs.
 """
-Base.values(uvs::UncertainValues) = Dict((lbl, uvs[lbl]) for lbl in keys(uvs.labels))
+Base.values(uvs::UncertainValues) = Dict((lbl, uvs[lbl]) for lbl in Base.keys(uvs.labels))
 
 """
    covariance(lbl1::Label, lbl2::Label, uvs::UncertainValues)
