@@ -96,6 +96,7 @@ Returns the 1-σ uncertainty)
 Returns 0.
 """
 σ(f::Real) = zero(typeof(f))
+σ(m::Missing) = missing
 
 """
     uncertainty(uv::UncertainValue, k::Real=1.0)
@@ -138,6 +139,7 @@ value(uv::UncertainValue) = uv.value
 Returns f
 """
 value(f::Real) = f
+value(m::Missing) = m
 
 """
     pearson(uv1::UncertainValue, uv2::UncertainValue, covar::Real)
