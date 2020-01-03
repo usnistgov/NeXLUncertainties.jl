@@ -164,12 +164,12 @@ Returns the Pearson correlation coefficient between variables `a` and `b`.
 correlation(a::Label, b::Label, uvs::UncertainValues) = covariance(a, b, uvs) / (σ(a, uvs) * σ(b, uvs))
 
 """
-    extract(uvs::UncertainValues, labels::Vector{<:Label})::Matrix
+    Base.filter(uvs::UncertainValues, labels::Vector{<:Label})::Matrix
 
 Extract the covariance matrix associated with the variables specified in labels
 into a Matrix.
 """
-function extract(uvs::UncertainValues, labels::Vector{<:Label})::Matrix
+function Base.filter(uvs::UncertainValues, labels::Vector{<:Label})::Matrix
     idx = map(l->uvs.labels[l], labels) # look it up once...
     m = zeros(length(idx), length(idx))
     for (r, rl) in enumerate(idx)

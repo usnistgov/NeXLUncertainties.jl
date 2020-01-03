@@ -47,7 +47,7 @@ using SparseArrays
                 @test σ(label("Z"), uvs1)==0.3
                 @test σ(label("Z"), uvs1)==0.3
 
-                @test extract(uvs1, [label("Z"), label("X1")])==[ cov[3,3] cov[3,2]; cov[2,3] cov[2,2] ]
+                @test filter(uvs1, [label("Z"), label("X1")])==[ cov[3,3] cov[3,2]; cov[2,3] cov[2,2] ]
 
                 @test uvs1[label("Z")]==uv(12.0,0.3)
                 @test uvs1[label("X1")]==uv(8.0,0.2)
@@ -92,7 +92,7 @@ using SparseArrays
                 @test σ(nl"E",uvs3)==sqrt(0.3)
                 @test σ(nl"E",uvs2)==σ(nl"E",uvs3)
 
-                ex = extract(uvs3, [ nl"A", nl"C", nl"E" ])
+                ex = filter(uvs3, [ nl"A", nl"C", nl"E" ])
                 @test ex[1,1] == covariance(nl"A", nl"A", uvs3)
                 @test ex[1,2] == covariance(nl"A", nl"C", uvs3)
                 @test ex[1,2] == ex[2,1]

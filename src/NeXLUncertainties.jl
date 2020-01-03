@@ -29,7 +29,6 @@ export @nl_str # Shortcut to create a label from a string
 include("uncertainValues.jl")
 export UncertainValues # An array of values with covariances
 export uvs # Constructs an UncertainValues object
-export extract # Extract a portion of the covariance matrix
 export covariance # Extract the covariance associated with the specified label
 export checkcovariance! # Ensure that the covariance matrix is valid
 export labels # The labels for the values in an UncertainValues object
