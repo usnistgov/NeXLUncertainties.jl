@@ -56,7 +56,6 @@ using SparseArrays
                 @test get(uvs1,label("Zz"),uv(8.1,0.0)) == uv(8.1,0.0)
 
                 @test length(uvs1)==3
-                @test size(uvs1) == (3,)
 
                 @test value(label("Z"),uvs1)==12.0
                 @test value(label("X1"),uvs1)==8.0
@@ -111,10 +110,10 @@ using SparseArrays
                 @test length(uvs1) == 3
 
                 vals = values(uvs3)
-                @test vals[nl"A"] == UncertainValue(5.0,sqrt(0.3))
-                @test vals[nl"C"] == UncertainValue(3.0,sqrt(0.3))
+                lbls = labels(uvs3)
+                @test value(uvs3[lbls[1]]) == vals[1]
+                @test value(uvs3[lbls[3]]) == vals[3]
 
-                @test uncertainty(nl"A",uvs3,2.0) == 2.0*sqrt(0.3)
-
+                @test uncertainty(nl"A",uvs3,2.0) == 2.0*sqrt(0.1)
         end
 end

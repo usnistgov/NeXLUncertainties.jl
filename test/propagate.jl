@@ -25,7 +25,7 @@ using Random
         else
             jac=missing
         end
-        return (outputs, results, jac)
+        return (LabeledValues(outputs, results), jac)
     end
 
     labels = Label[ label("A"), label("B"), label("C") ]
@@ -56,7 +56,7 @@ using Random
     println(res)
     println("D=$(d(a,b,c)) E=$(e(a,b,c)) F=$(f(a,b,c)) G=$(g(a,b,c))")
 
-    mcres = NeXLUncertainties.mcpropagate(TestMeasurementModel(), inputs, 100000, MersenneTwister(0xFEED))
+    mcres = NeXLUncertainties.mcpropagate(TestMeasurementModel(), inputs, 100000, rng=MersenneTwister(0xFEED))
     println(mcres)
     # Check if the analytical and Monte Carlo agree?
     @test isapprox(value(mcres[ld]), value(res[ld]), atol = 0.05*σ(res[ld]))
@@ -71,3 +71,96 @@ using Random
     @test isapprox(covariance(le,lg,mcres),covariance(le,lg,res),atol=0.05*σ(res[le])*σ(res[lg]))
     @test isapprox(covariance(lf,lg,mcres),covariance(lf,lg,res),atol=0.05*σ(res[lf])*σ(res[lg]))
 end;
+
+@testset "K-Ratio test"
+    inputs = uvs(Dict{Label,UncertainValue}(
+        nl"I[low,std]"=>uv(20.0,sqrt(20.0)),
+        nl"I[high,std]"=>uv(15.0,sqrt(15.0)),
+        nl"I[peak,std]"=>uv(1000.0,sqrt(1000.0)),
+        nl"t[low,std]"=>uv(5.0,0.01),
+        nl"t[high,std]"=>uv(8.0,0.01),
+        nl"t[peak,std]"=>uv(5.6,0.01),
+        nl"i[low,std]"=>uv(10.0,0.1),
+        nl"i[high,std]"=>uv(10.1,0.1),
+        nl"i[peak,std]"=>uv(9.9,0.1),
+        nl"R[low,std]"=>uv(100.0,0.01),
+        nl"R[high,std]"=>uv(110.0,0.01),
+        nl"R[peak,std]"=>uv(106.0,0.01),
+
+        nl"I[low,unk]"=>uv(30.0,sqrt(30.0)),
+        nl"I[high,unk]"=>uv(25.0,sqrt(25.0)),
+        nl"I[peak,unk]"=>uv(5000.0,sqrt(5000.0)),
+        nl"t[low,unk]"=>uv(3.0,0.01),
+        nl"t[high,unk]"=>uv(6.0,0.01),
+        nl"t[peak,unk]"=>uv(2.6,0.01),
+        nl"i[low,unk]"=>uv(10.0,0.1),
+        nl"i[high,unk]"=>uv(10.1,0.1),
+        nl"i[peak,unk]"=>uv(9.9,0.1),
+        nl"R[low,unk]"=>uv(102.0,0.01),
+        nl"R[high,unk]"=>uv(108.0,0.01),
+        nl"R[peak,unk]"=>uv(106.0,0.01),
+    ))
+
+    struct NormI <: MeasurementModel
+        position::String
+        sample::String
+    end
+
+    function compute(ni::NormI, inputs::LabeledValues, withJac::Bool)
+        lI, lt, li = label("I[$(ni.position),$(ni.sample)]"), label("t[$(ni.position),$(ni.sample)]"), label("i[$(ni.position),$(ni.sample)]")
+        I, t, i = inputs[lI], inputs[lt], inputs[li]
+        labels = [ label("NI[$(ni.position),$(ni.sample)]", ]
+        results = [ I/(t*i), ]
+        jac = withJac ? zeros(Float64, 1, length(inputs))
+        if withJac
+            jac[1, indexin(lI, inputs)] = 1.0/(t*i)
+            jac[1, indexin(lt, inputs)] = -I*i/((t*i)^2)
+            jac[1, indexin(li, inputs)] = -I*t/((t*i)^2)
+        end
+        return ( LabeledValues(labels, results), jac )
+    end
+
+    struct IChar <: MeasurementModel
+        sample::String
+    end
+
+    function compute(ic::IChar, inputs::LabeledValues, withJac::Bool)
+        lNIl, lNIp, lNIh = label.( [ "NI[low,$(ic.sample)]", "NI[peak,$(ic.sample)]", "NI[high,$(ic.sample)]" ] )
+        lRl, lRp, lRh = label.( [ "R[low,$(ic.sample)]", "R[peak,$(ic.sample)]", "R[high,$(ic.sample)]" ] )
+        NIl, NIp, NIh = inputs[lNIl], inputs[lNIp], inputs[lNIh]
+        Rl, Rp, Rh = inputs[lRl], inputs[lRp], inputs[lRh]
+        labels= [ label("I[char,$(ic.sample)]"), ]
+        results = [ NIp - (Rp-Rl)*(NIp-NIl)/(Rh-Rl), ]
+        jac = withJac ? zeros(Float64, 1, length(inputs))
+        if withJac
+            jac[1, indexin(lNIl, inputs)] = (Rp-Rl)/(Rh-Rl)
+            jac[1, indexin(lNIp, inputs)] = 1.0
+            jac[1, indexin(lNIh, inputs)] = -(Rp-Rl)/(Rh-Rl)
+            jac[1, indexin(lRl, inputs)] = (NIp-NIl)*(1.0/(Rh-Rl) + (Rp-Rl)/((Rh-Rl)^2))
+            jac[1, indexin(lRp, inputs)] = 1.0/(Rh-Rl)
+            jac[1, indexin(lRh, inputs)] = -(Rp-Rl)/((Rh-Rl)^2)
+        end
+        return ( LabeledValues(labels, results), jac)
+    end
+
+    struct KRatio <: Label
+        id::String
+    end
+
+    function compute(kr::KRatio, inputs::LabeledValues, withJac::Bool)
+        lIstd, lIunk = label("I[char,std]"), label("I[char,unk]")
+        labels = [ label("k[$id]"), ]
+        results = [ inputs[lIunk]/inputs[lIstd], ]
+        jac = withJac ? zeros(Float64, 1, length(inputs))
+        if withJac
+            jac[1, indexin(lIstd)] = -results[1] / inputs[lIstd]
+            jac[1, indexin(lIunk)] = result / inputs[lIunk]
+        end
+        return ( LabeledValues(labels,results), jac )
+    end
+
+    KRatioModel(id::String) = KRatio(id) ∘ (( IChar("std") ∘ NormI("std")) | (IChar("unk") ∘ NormI("unk")) )
+
+    (vals,jac) = KRatioModel("K-L3")(inputs)
+
+end

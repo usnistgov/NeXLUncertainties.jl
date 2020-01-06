@@ -135,6 +135,30 @@ function uvs(
     covar)
 end
 
+function uvs(
+        labels::AbstractVector{<:Label},
+        values::AbstractVector{Float64},
+        vars::AbstractVector{Float64}
+)
+    @assert length(labels)==length(values)
+    @assert length(labels)==length(vars)
+    return uvs(labels,values,diagm(vars))
+end
+
+function uvs(
+        values::Dict{<:Label, UncertainValue}
+)
+    labels, values, vars = Vector{Label}(), Vector{Float64}(), Vector{Float64}()
+    for (lbl, uv) in values
+        push!(labels, lbl)
+        push!(values, value(uv))
+        push!(vars, variance(uv))
+    end
+    return uvs(labels,values,diagm(vars))
+end
+
+
+
 function checkUVS!(
     labels::Dict{<:Label,Int},
     values::AbstractVector{Float64},
@@ -231,7 +255,7 @@ Base.show(io::IO, uvs::UncertainValues) = print(
 
 function Base.show(io::IO, ::MIME"text/plain", uvs::UncertainValues)
     trim(str, len) = str[1:min(len, length(str))] * " "^max(0, len - min(len, length(str)))
-    lbls = labels(uvs)
+    lbls = sortedlabels(uvs)
     print(io, "Variable       Value              ")
     foreach(l -> print(io, trim("$l", 12)), lbls)
     for (r, rl) in enumerate(lbls)
@@ -244,13 +268,27 @@ function Base.show(io::IO, ::MIME"text/plain", uvs::UncertainValues)
 end
 
 """
-    labels(uvs::UncertainValues)
+    sortedlabels(uvs::UncertainValues)
 
 A alphabetically sorted list of the labels. Warning this can be slow.  Use keys(...) if you
 want just a unordered set of labels.
 """
-labels(uvs::UncertainValues) =
+sortedlabels(uvs::UncertainValues) =
     sort([Base.keys(uvs.labels)...], lt = (l, m) -> isless(repr(l), repr(m)))
+
+"""
+    labels(uvs::UncertainValues)::Vector{Label}
+
+Returns a list of labels in the order in which they are represented within the
+UncertainValues object.  Matches the order in which values(...) returns the values.
+"""
+function labels(uvs::UncertainValues)::Vector{Label}
+    res = Array{Label}(undef, length(uvs.labels))
+    for (lbl, idx) in uvs.labels
+        res[idx] = lbl
+    end
+    return res
+end
 
 Base.keys(uvs::UncertainValues) = Base.keys(uvs.labels)
 
@@ -290,11 +328,12 @@ The value associate with the Label.
 value(lbl::Label, uvs::UncertainValues) = uvs.values[uvs.labels[lbl]]
 
 """
-    values(uvs::UncertainValues)
+    values(uvs::UncertainValues)::Vector{Float64}
 
-A Dict containing <:Label => UncertainValue for each row in uvs.
+A Vector containing the Float64 value for each row in uvs.  In the same order as
+labels(uvs).
 """
-Base.values(uvs::UncertainValues) = Dict((lbl, uvs[lbl]) for lbl in Base.keys(uvs.labels))
+Base.values(uvs::UncertainValues) = uvs.values
 
 """
    covariance(lbl1::Label, lbl2::Label, uvs::UncertainValues)

@@ -26,6 +26,10 @@ export Label # Abstract type to label variables in UncertainValues object
 export label # Construct a Label from a struct
 export @nl_str # Shortcut to create a label from a string
 
+# Apply labels to the values in an array
+include("labeledvalues.jl")
+export LabeledValues
+
 include("uncertainValues.jl")
 export UncertainValues # An array of values with covariances
 export uvs # Constructs an UncertainValues object
@@ -41,11 +45,10 @@ export correlation # Pearson correlation coefficient
 
 include("propagate.jl")
 export MeasurementModel
-export LabeledValues
 export propagate
 export mcpropagate
 export compute
-export CarryOver
+export MaintainInputs
 export ParallelMeasurementModel
-export SerialMeasurementModel
+export ComposedMeasurementModel
 end
