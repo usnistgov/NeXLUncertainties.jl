@@ -99,11 +99,11 @@ Note:
 """
 function Base.:∘(mm1::MeasurementModel, mm2::MeasurementModel)
     if mm1 isa ComposedMeasurementModel
-        insert!(mm1.models,1,mm2)
-        return mm1
-    elseif mm2 isa CompositeMeasurementModel
         push!(mm2.models,mm1)
         return mm2
+    elseif mm2 isa ComposedMeasurementModel
+        insert!(mm1.models,1,mm2)
+        return mm1
     else
         return ComposedMeasurementModel([mm2, mm1], true)
     end
@@ -132,7 +132,7 @@ function Base.:|(mm1::MeasurementModel, mm2::MeasurementModel)
         push!(mm2.models, mm1)
         return mm2
     else
-        return ParallelMeasurementModel([mm1, mm2], true)
+        return ParallelMeasurementModel([mm1, mm2], false)
     end
 end
 
@@ -223,10 +223,10 @@ outer-most steps of a large calculation where splitting the calculation can keep
 Jacobians as small as possible until the last possible moment.
 """
 struct ParallelMeasurementModel <: MeasurementModel
-    models::Vector{MeasurementModel}
+    models::Vector{<:MeasurementModel}
     multi::Bool
 
-    ParallelMeasurementModel(models::AbstractVector{MeasurementModel}, multithread=false) =
+    ParallelMeasurementModel(models::AbstractVector{<:MeasurementModel}, multithread=false) =
         new(models, multithread)
 end
 
@@ -257,7 +257,7 @@ can be concatenated rather than multiplied. `ParallelMeasurementModel`s and
 `ComposedMeasurementModel`s can be combined to produce efficient calculation models.
 """
 struct ComposedMeasurementModel <: MeasurementModel
-    models::Vector{MeasurementModel}
+    models::Vector{<:MeasurementModel}
     keepinputs::Bool
 end
 
@@ -271,7 +271,7 @@ function compute(smm::ComposedMeasurementModel, inputs::LabeledValues, withJac::
         currjac = withJac ? vcat(I, jac) * currjac : missing
         # size(currjac) = ( length(next), length(N+sum(Ni,1:i-1)))
     end
-    if !keepinputs
+    if !smm.keepinputs
         # Don't return the inputs in current or in currjac
         ir = length(inputs)+1:length(current)
         outvals = LabeledValues(labels(outvals)[ir], values(outvals)[ir])

@@ -30,9 +30,9 @@ struct LabeledValues
     end
 end
 
-Base.copy(lv::LabeledValues) = new(copy(lv.forward), copy(lv.reverse))
+Base.copy(lv::LabeledValues) = LabeledValues(copy(lv.forward), copy(lv.reverse))
 
-Base.merge(lv1::LabeledValues, lv2::LabeledValues) = merge!(copy(lv1))
+Base.merge(lv1::LabeledValues, lv2::LabeledValues) = merge!(copy(lv1), lv2)
 
 function Base.merge!(lv1::LabeledValues, lv2::LabeledValues)
     for (lbl,val) in lv2.forward
@@ -54,8 +54,8 @@ Base.length(lv::LabeledValues) = length(lv.forward)
 Base.getindex(lv::LabeledValues, lbl::Label)::Float64 =
     lv.forward[lbl]
 
-function Base.setindex(lv::LabeledValues, lbl::Label, val::Real)
-    @assert !haskey(lv.forward, lbl) "$lbl already exists in LabeledValues - $lv"
+function Base.setindex!(lv::LabeledValues, val::Real, lbl::Label)
+    @assert !Base.haskey(lv.forward, lbl) "$lbl already exists in LabeledValues - $lv"
     lv.forward[lbl] = val
     lv.reverse[lbl] = length(lv.forward)
 end
@@ -73,10 +73,10 @@ Base.indexin(lbl::Label, lv::LabeledValues)::Int =
 
 Is there a value associated with the `Label`?
 """
-haskey(lv::LabeledValues, lbl::Label) =
+Base.haskey(lv::LabeledValues, lbl::Label) =
     haskey(lv.forward, lbl)
 
-keys(lv::LabeledValues) = keys(lv.forward)
+Base.keys(lv::LabeledValues) = keys(lv.forward)
 
 """
     labels(lv::LabeledValues)::Vector{Label}

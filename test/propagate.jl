@@ -72,8 +72,8 @@ using Random
     @test isapprox(covariance(lf,lg,mcres),covariance(lf,lg,res),atol=0.05*σ(res[lf])*σ(res[lg]))
 end;
 
-@testset "K-Ratio test"
-    inputs = uvs(Dict{Label,UncertainValue}(
+@testset "K-Ratio test" begin
+    inputs = uvs(Dict(
         nl"I[low,std]"=>uv(20.0,sqrt(20.0)),
         nl"I[high,std]"=>uv(15.0,sqrt(15.0)),
         nl"I[peak,std]"=>uv(1000.0,sqrt(1000.0)),
@@ -86,7 +86,6 @@ end;
         nl"R[low,std]"=>uv(100.0,0.01),
         nl"R[high,std]"=>uv(110.0,0.01),
         nl"R[peak,std]"=>uv(106.0,0.01),
-
         nl"I[low,unk]"=>uv(30.0,sqrt(30.0)),
         nl"I[high,unk]"=>uv(25.0,sqrt(25.0)),
         nl"I[peak,unk]"=>uv(5000.0,sqrt(5000.0)),
@@ -106,12 +105,12 @@ end;
         sample::String
     end
 
-    function compute(ni::NormI, inputs::LabeledValues, withJac::Bool)
+    function NeXLUncertainties.compute(ni::NormI, inputs::LabeledValues, withJac::Bool)
         lI, lt, li = label("I[$(ni.position),$(ni.sample)]"), label("t[$(ni.position),$(ni.sample)]"), label("i[$(ni.position),$(ni.sample)]")
         I, t, i = inputs[lI], inputs[lt], inputs[li]
-        labels = [ label("NI[$(ni.position),$(ni.sample)]", ]
-        results = [ I/(t*i), ]
-        jac = withJac ? zeros(Float64, 1, length(inputs))
+        labels = [ label("NI[$(ni.position),$(ni.sample)]") ]
+        results = [ I/(t*i) ]
+        jac = withJac ? zeros(Float64, 1, length(inputs)) : missing
         if withJac
             jac[1, indexin(lI, inputs)] = 1.0/(t*i)
             jac[1, indexin(lt, inputs)] = -I*i/((t*i)^2)
@@ -124,14 +123,14 @@ end;
         sample::String
     end
 
-    function compute(ic::IChar, inputs::LabeledValues, withJac::Bool)
+    function NeXLUncertainties.compute(ic::IChar, inputs::LabeledValues, withJac::Bool)
         lNIl, lNIp, lNIh = label.( [ "NI[low,$(ic.sample)]", "NI[peak,$(ic.sample)]", "NI[high,$(ic.sample)]" ] )
         lRl, lRp, lRh = label.( [ "R[low,$(ic.sample)]", "R[peak,$(ic.sample)]", "R[high,$(ic.sample)]" ] )
         NIl, NIp, NIh = inputs[lNIl], inputs[lNIp], inputs[lNIh]
         Rl, Rp, Rh = inputs[lRl], inputs[lRp], inputs[lRh]
-        labels= [ label("I[char,$(ic.sample)]"), ]
-        results = [ NIp - (Rp-Rl)*(NIp-NIl)/(Rh-Rl), ]
-        jac = withJac ? zeros(Float64, 1, length(inputs))
+        labels= [ label("Ichar[$(ic.sample)]") ]
+        results = [ NIp - (Rp-Rl)*(NIp-NIl)/(Rh-Rl) ]
+        jac = withJac ? zeros(Float64, 1, length(inputs)) : missing
         if withJac
             jac[1, indexin(lNIl, inputs)] = (Rp-Rl)/(Rh-Rl)
             jac[1, indexin(lNIp, inputs)] = 1.0
@@ -143,24 +142,26 @@ end;
         return ( LabeledValues(labels, results), jac)
     end
 
-    struct KRatio <: Label
+    struct KRatioModel <: MeasurementModel
         id::String
     end
 
-    function compute(kr::KRatio, inputs::LabeledValues, withJac::Bool)
-        lIstd, lIunk = label("I[char,std]"), label("I[char,unk]")
-        labels = [ label("k[$id]"), ]
-        results = [ inputs[lIunk]/inputs[lIstd], ]
-        jac = withJac ? zeros(Float64, 1, length(inputs))
+    function NeXLUncertainties.compute(kr::KRatioModel, inputs::LabeledValues, withJac::Bool)
+        lIstd, lIunk = label("Ichar[std]"), label("Ichar[unk]")
+        labels = [ label("k[$(kr.id)]") ]
+        results = [ inputs[lIunk]/inputs[lIstd] ]
+        jac = withJac ? zeros(Float64, 1, length(inputs)) : missing
         if withJac
-            jac[1, indexin(lIstd)] = -results[1] / inputs[lIstd]
-            jac[1, indexin(lIunk)] = result / inputs[lIunk]
+            jac[1, indexin(lIstd, inputs)] = -results[1] / inputs[lIstd]
+            jac[1, indexin(lIunk, inputs)] = results[1] / inputs[lIunk]
         end
         return ( LabeledValues(labels,results), jac )
     end
 
-    KRatioModel(id::String) = KRatio(id) ∘ (( IChar("std") ∘ NormI("std")) | (IChar("unk") ∘ NormI("unk")) )
+    println(stderr,inputs)
 
-    (vals,jac) = KRatioModel("K-L3")(inputs)
+    ICharModel(id::String) = IChar(id) ∘ ( NormI("low",id) | NormI("peak",id) | NormI("high",id))
+    TotalModel(id::String) = KRatioModel(id) ∘ ( ICharModel("std") | ICharModel("unk") )
+    (vals,jac) = TotalModel("K-L3")(inputs)
 
 end

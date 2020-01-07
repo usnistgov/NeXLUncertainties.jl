@@ -148,13 +148,13 @@ end
 function uvs(
         values::Dict{<:Label, UncertainValue}
 )
-    labels, values, vars = Vector{Label}(), Vector{Float64}(), Vector{Float64}()
+    labels, vals, vars = Vector{Label}(), Vector{Float64}(), Vector{Float64}()
     for (lbl, uv) in values
         push!(labels, lbl)
-        push!(values, value(uv))
+        push!(vals, value(uv))
         push!(vars, variance(uv))
     end
-    return uvs(labels,values,diagm(vars))
+    return uvs(labels, vals, diagm(vars))
 end
 
 
