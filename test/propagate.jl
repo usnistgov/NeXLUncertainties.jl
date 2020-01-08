@@ -129,7 +129,7 @@ end;
         NIl, NIp, NIh = inputs[lNIl], inputs[lNIp], inputs[lNIh]
         Rl, Rp, Rh = inputs[lRl], inputs[lRp], inputs[lRh]
         labels= [ label("Ichar[$(ic.sample)]") ]
-        results = [ NIp - (Rp-Rl)*(NIp-NIl)/(Rh-Rl) ]
+        results = [ NIp - (Rp-Rl)*(NIh-NIl)/(Rh-Rl) ]
         jac = withJac ? zeros(Float64, 1, length(inputs)) : missing
         if withJac
             jac[1, indexin(lNIl, inputs)] = (Rp-Rl)/(Rh-Rl)
@@ -158,8 +158,6 @@ end;
         return ( LabeledValues(labels,results), jac )
     end
 
-    println(stderr,inputs)
-
     #ICharModel1(id::String) = ( IChar(id) | MaintainInputs(inputs)) ∘ ( NormI("low",id) | NormI("peak",id) | NormI("high",id) | MaintainInputs(inputs))
     #TotalModel1(id::String) = (KRatioModel(id) | MaintainInputs(inputs)) ∘ ( ICharModel1("std") | ICharModel1("unk") | MaintainInputs(inputs))
 
@@ -169,11 +167,9 @@ end;
 
 
     res = TotalModel2("K-L3")(inputs)
-    resmc = mcpropagate(TotalModel2("K-L3"),inputs)
+    resmc = mcpropagate(TotalModel2("K-L3"),inputs,1000)
 
     lbl = nl"k[K-L3]"
     @test isapprox(value(res[lbl]),value(resmc[lbl]),atol=0.1)
     @test isapprox(σ(res[lbl]),σ(resmc[lbl]),atol=0.1)
-    @test isapprox()
-
 end
