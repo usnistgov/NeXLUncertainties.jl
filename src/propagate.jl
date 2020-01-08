@@ -88,9 +88,9 @@ Implements composition of `MeasurementModel`s.
 
 Examples:
 
-    (g ∘ f)(x) == propagate(ComposedMeasurementModel([f, g], true), x)
+    (g ∘ f)(x) == propagate(ComposedMeasurementModel([f, g]), x)
     (g ∘ f)(x) == g(f(x))
-    (h ∘ g ∘ f)(x) == propagate(ComposedMeasurementModel([f, g, h], true), x)
+    (h ∘ g ∘ f)(x) == propagate(ComposedMeasurementModel([f, g, h]), x)
     (h ∘ g ∘ f)(x) == h(g(f(x)))
 
 Note:
@@ -105,7 +105,7 @@ function Base.:∘(mm1::MeasurementModel, mm2::MeasurementModel)
         insert!(mm1.models,1,mm2)
         return mm1
     else
-        return ComposedMeasurementModel([mm2, mm1], true)
+        return ComposedMeasurementModel([mm2, mm1])
     end
 end
 
@@ -188,21 +188,25 @@ end
 """
     MaintainInputs <: MeasurementModel
 
-Carry over a subset of the inputs to the next step in a calculation.  Typically used in
-consort with a `ParallelMeasurementModel` when inputs to this step will also be required
-in subsequent steps.  `ComposedMeasurementModel` has a `keepinputs` option that performs
-the same task.
+Carry over a subset of the input variables to the next step in a calculation.  Typically
+used in consort with a `ParallelMeasurementModel` when inputs to this step will also
+be required in subsequent steps.
 """
 struct MaintainInputs <: MeasurementModel
     labels::Vector{Label}
 
     MaintainInputs(uvs::UncertainValues) = new(naturalorder(uvs))
-    MaintainInputs(labels::AbstractVector{Label}) = new(labels)
+    MaintainInputs(labels::AbstractVector{<:Label}) = new(labels)
 end
 
 function compute(mm::MaintainInputs, inputs::LabeledValues, withJac::Bool)::MMResult
     res = collect(map(lbl->value(inputs,lbl), mm.labels))
-    jac = withJac ? I : missing
+    jac = withJac ? zeros(length(mm.labels), length(inputs)) : missing
+    if withJac
+        for (i, lbl) in enumerate(mm.labels)
+            jac[i, indexin(lbl, inputs)] = 1.0
+        end
+    end
     return (LabeledValues(mm.labels, res), jac)
 end
 
@@ -221,9 +225,11 @@ only when the cost of the calculation is going to exceed the overhead necessary 
 and manage the thread.  Usually this means, only use `multithread=true` on one of the
 outer-most steps of a large calculation where splitting the calculation can keep the
 Jacobians as small as possible until the last possible moment.
+
+The result of the ParallelMeasurementModel is the union of the outputs from each model.
 """
 struct ParallelMeasurementModel <: MeasurementModel
-    models::Vector{<:MeasurementModel}
+    models::Vector{MeasurementModel}
     multi::Bool
 
     ParallelMeasurementModel(models::AbstractVector{<:MeasurementModel}, multithread=false) =
@@ -255,28 +261,21 @@ subsequent step.  Favor `ParallelMeasurementModel` whenever a collection of
 the `ParallelMeasurementModel`s can be run on multiple threads and the Jacobians
 can be concatenated rather than multiplied. `ParallelMeasurementModel`s and
 `ComposedMeasurementModel`s can be combined to produce efficient calculation models.
+
+The final result of the ComposedMeasurementModel is the output of the final step.
 """
 struct ComposedMeasurementModel <: MeasurementModel
-    models::Vector{<:MeasurementModel}
-    keepinputs::Bool
+    models::Vector{MeasurementModel}
 end
 
 function compute(smm::ComposedMeasurementModel, inputs::LabeledValues, withJac::Bool)::MMResult
     # N inputs
-    current, currjac = copy(inputs), withJac ? I : missing
+    nextinp, nextjac = inputs, withJac ? I : missing
     for model in smm.models
-        (outvals, jac) = compute(model, current, withJac)
-        merge!(current, outvals)
-        # length(current) = N + sum(Ni,1:i)
-        currjac = withJac ? vcat(I, jac) * currjac : missing
-        # size(currjac) = ( length(next), length(N+sum(Ni,1:i-1)))
+        (nextinp, jac) = compute(model, nextinp, withJac)
+        nextjac = withJac ? jac * nextjac : missing
     end
-    if !smm.keepinputs
-        # Don't return the inputs in current or in currjac
-        ir = length(inputs)+1:length(current)
-        outvals = LabeledValues(labels(outvals)[ir], values(outvals)[ir])
-    end
-    return (outvals, currjac)
+    return (nextinp, nextjac)
 end
 
 """

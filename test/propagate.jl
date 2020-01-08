@@ -124,8 +124,8 @@ end;
     end
 
     function NeXLUncertainties.compute(ic::IChar, inputs::LabeledValues, withJac::Bool)
-        lNIl, lNIp, lNIh = label.( [ "NI[low,$(ic.sample)]", "NI[peak,$(ic.sample)]", "NI[high,$(ic.sample)]" ] )
-        lRl, lRp, lRh = label.( [ "R[low,$(ic.sample)]", "R[peak,$(ic.sample)]", "R[high,$(ic.sample)]" ] )
+        lNIl, lNIp, lNIh = label.( ("NI[low,$(ic.sample)]", "NI[peak,$(ic.sample)]", "NI[high,$(ic.sample)]" ) )
+        lRl, lRp, lRh = label.( ( "R[low,$(ic.sample)]", "R[peak,$(ic.sample)]", "R[high,$(ic.sample)]" ) )
         NIl, NIp, NIh = inputs[lNIl], inputs[lNIp], inputs[lNIh]
         Rl, Rp, Rh = inputs[lRl], inputs[lRp], inputs[lRh]
         labels= [ label("Ichar[$(ic.sample)]") ]
@@ -147,7 +147,7 @@ end;
     end
 
     function NeXLUncertainties.compute(kr::KRatioModel, inputs::LabeledValues, withJac::Bool)
-        lIstd, lIunk = label("Ichar[std]"), label("Ichar[unk]")
+        lIstd, lIunk = nl"Ichar[std]", nl"Ichar[unk]"
         labels = [ label("k[$(kr.id)]") ]
         results = [ inputs[lIunk]/inputs[lIstd] ]
         jac = withJac ? zeros(Float64, 1, length(inputs)) : missing
@@ -160,8 +160,20 @@ end;
 
     println(stderr,inputs)
 
-    ICharModel(id::String) = IChar(id) ∘ ( NormI("low",id) | NormI("peak",id) | NormI("high",id))
-    TotalModel(id::String) = KRatioModel(id) ∘ ( ICharModel("std") | ICharModel("unk") )
-    (vals,jac) = TotalModel("K-L3")(inputs)
+    #ICharModel1(id::String) = ( IChar(id) | MaintainInputs(inputs)) ∘ ( NormI("low",id) | NormI("peak",id) | NormI("high",id) | MaintainInputs(inputs))
+    #TotalModel1(id::String) = (KRatioModel(id) | MaintainInputs(inputs)) ∘ ( ICharModel1("std") | ICharModel1("unk") | MaintainInputs(inputs))
+
+    required(id) = label.( [ "R[low,$id]", "R[peak,$id]", "R[high,$id]"  ])
+    ICharModel2(id::String) = IChar(id) ∘ ( NormI("low",id) | NormI("peak",id) | NormI("high",id) | MaintainInputs(required(id)))
+    TotalModel2(id::String) = KRatioModel(id) ∘ ( ICharModel2("std") | ICharModel2("unk"))
+
+
+    res = TotalModel2("K-L3")(inputs)
+    resmc = mcpropagate(TotalModel2("K-L3"),inputs)
+
+    lbl = nl"k[K-L3]"
+    @test isapprox(value(res[lbl]),value(resmc[lbl]),atol=0.1)
+    @test isapprox(σ(res[lbl]),σ(resmc[lbl]),atol=0.1)
+    @test isapprox()
 
 end
