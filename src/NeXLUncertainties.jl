@@ -3,6 +3,7 @@ module NeXLUncertainties
 include("uncertainValue.jl")
 export UncertainValue # A simple value with uncertainty
 export uv # Constructs an UncertainValue from values v,σ
+export poisson # Creates an UncertainValue from a count statistic limited integer
 export multiply # multiply UncertainValue structs
 export divide # divide UncertainValue structs
 export add
@@ -48,6 +49,7 @@ export propagate
 export mcpropagate
 export compute
 export MaintainInputs
+export AllInputs
 export ParallelMeasurementModel
 export ComposedMeasurementModel
 end

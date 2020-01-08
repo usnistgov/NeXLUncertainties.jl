@@ -4,8 +4,6 @@ using LinearAlgebra
 using Base.Threads
 using Base.Iterators
 
-
-
 """
     MeasurementModel
 
@@ -19,6 +17,10 @@ UncertainValues object representing the input values into an UncertainValues obj
 representing the output values, the function operator has been overloaded:
 
     (mm::MeasurementModel)(uvs::UncertainValues)::UncertainValues
+
+or
+
+    (mm::MeasurementModel)(uvs::Dict{<:Label, UncertainValue})::UncertainValues
 
 This helps you to think of a MeasurementModel as the equivalent of a function for
 UncertainValues.
@@ -74,12 +76,18 @@ the Jacobian but you'd otherwise like to use identical code to compute the funct
 """
 abstract type MeasurementModel end
 
-const MMResult = Tuple{LabeledValues, Union{Missing,AbstractMatrix{Float64}}}
+const MMResult = Tuple{LabeledValues,Union{Missing,AbstractMatrix{Float64}}}
 
 # Allows measurement models to be used like functions
 function (mm::MeasurementModel)(inputs::UncertainValues)::UncertainValues
     return propagate(mm, inputs)
 end
+
+# Allows measurement models to be used like functions
+function (mm::MeasurementModel)(inputs::Dict{<:Label, UncertainValue})::UncertainValues
+    return propagate(mm, uvs(inputs))
+end
+
 
 """
     (∘)(mm1::MeasurementModel, mm2::MeasurementModel)
@@ -99,15 +107,19 @@ Note:
 """
 function Base.:∘(mm1::MeasurementModel, mm2::MeasurementModel)
     if mm1 isa ComposedMeasurementModel
-        push!(mm2.models,mm1)
+        push!(mm2.models, mm1)
         return mm2
     elseif mm2 isa ComposedMeasurementModel
-        insert!(mm1.models,1,mm2)
+        insert!(mm1.models, 1, mm2)
         return mm1
     else
         return ComposedMeasurementModel([mm2, mm1])
     end
 end
+
+# So missing measurement models compile down to a NoOP
+Base.:∘(mm1::MeasurementModel, mm2::Missing) = mm1
+Base.:∘(mm1::Missing, mm2::MeasurementModel) = mm2
 
 """
     (|)(mm1::MeasurementModel, mm2::MeasurementModel)
@@ -136,6 +148,10 @@ function Base.:|(mm1::MeasurementModel, mm2::MeasurementModel)
     end
 end
 
+# So missing measurement models compile down to a NoOP
+Base.:|(mm1::MeasurementModel, mm2::Missing) = mm1
+Base.:|(mm1::Missing, mm2::MeasurementModel) = mm2
+
 """
     propagate(mm::MeasurementModel, uvs::UncertainValues)::UncertainValues
 
@@ -144,7 +160,7 @@ produce the output values (as UncertainValues).
 """
 function propagate(mm::MeasurementModel, inputs::UncertainValues)::UncertainValues
     (outvals, jac) = compute(mm, LabeledValues(labels(inputs), values(inputs)), true)
-    return uvs(labels(outvals), values(outvals), jac*inputs.covariance*transpose(jac))
+    return uvs(labels(outvals), values(outvals), jac * inputs.covariance * transpose(jac))
 end
 
 """
@@ -154,20 +170,26 @@ Propagate the `inputs` through the `MeasurementModel` using a MonteCarlo algorit
 the inputs are assumed to be represented by a `MvNormal` distribution with covariance
 from `inputs`.  Performs 'n' iterations and multi-thread if `parallel=true`.
 """
-function mcpropagate(mm::MeasurementModel, inputs::UncertainValues, n::Int; parallel=false, rng::AbstractRNG = Random.GLOBAL_RNG)::UncertainValues
+function mcpropagate(
+    mm::MeasurementModel,
+    inputs::UncertainValues,
+    n::Int;
+    parallel = false,
+    rng::AbstractRNG = Random.GLOBAL_RNG,
+)::UncertainValues
     function perform()
         inputs = LabeledValues(inlabels, rand(rng, mvn))
         return values(compute(mm, inputs, false)[1])
     end
     mvn = MvNormal(inputs.values, inputs.covariance)
-    (outvals, _) = compute(mm, LabeledValues(labels(inputs),values(inputs)), false)
+    (outvals, _) = compute(mm, LabeledValues(labels(inputs), values(inputs)), false)
     samples, inlabels = Array{Float64}(undef, (length(outvals), n)), labels(inputs)
-    if parallel && (nthreads()>1)
-        @threads for i in 1:n
+    if parallel && (nthreads() > 1)
+        @threads for i = 1:n
             samples[:, i] = perform()
         end
     else
-        for i in 1:n
+        for i = 1:n
             samples[:, i] = perform()
         end
     end
@@ -200,7 +222,7 @@ struct MaintainInputs <: MeasurementModel
 end
 
 function compute(mm::MaintainInputs, inputs::LabeledValues, withJac::Bool)::MMResult
-    res = collect(map(lbl->value(inputs,lbl), mm.labels))
+    res = collect(map(lbl -> value(inputs, lbl), mm.labels))
     jac = withJac ? zeros(length(mm.labels), length(inputs)) : missing
     if withJac
         for (i, lbl) in enumerate(mm.labels)
@@ -208,6 +230,20 @@ function compute(mm::MaintainInputs, inputs::LabeledValues, withJac::Bool)::MMRe
         end
     end
     return (LabeledValues(mm.labels, res), jac)
+end
+
+"""
+    AllInputs <: MeasurementModel
+
+Carry over all of the input variables to the next step in a calculation.  Typically
+used in consort with a `ParallelMeasurementModel` when inputs to this step will also
+be required in subsequent steps.
+"""
+struct AllInputs <: MeasurementModel end
+
+function compute(ai::AllInputs, inputs::LabeledValues, withJac::Bool)::MMResult
+        jac = withJac ? Array{Float64}(I, length(inputs), length(inputs)) : missing
+        return (inputs, jac)
 end
 
 """
@@ -232,13 +268,12 @@ struct ParallelMeasurementModel <: MeasurementModel
     models::Vector{MeasurementModel}
     multi::Bool
 
-    ParallelMeasurementModel(models::AbstractVector{<:MeasurementModel}, multithread=false) =
-        new(models, multithread)
+    ParallelMeasurementModel(models::AbstractVector{<:MeasurementModel}, multithread = false) = new(models, multithread)
 end
 
 function compute(mm::ParallelMeasurementModel, inputs::LabeledValues, withJac::Bool)::MMResult
     results = Vector{MMResult}(undef, length(mm.models))
-    if mm.multi && (nthreads()>1)
+    if mm.multi && (nthreads() > 1)
         @threads for i in eachindex(mm.models)
             results[i] = compute(mm.models[i], inputs, withJac)
         end
@@ -247,8 +282,8 @@ function compute(mm::ParallelMeasurementModel, inputs::LabeledValues, withJac::B
             results[i] = compute(mm.models[i], inputs, withJac)
         end
     end
-    outvals = reduce(merge, map(tp->getindex(tp,1), results))
-    jac = withJac ? vcat( map(tp->getindex(tp,2), results)...) : missing
+    outvals = reduce(merge, map(tp -> getindex(tp, 1), results))
+    jac = withJac ? vcat(map(tp -> getindex(tp, 2), results)...) : missing
     return (outvals, jac)
 end
 
@@ -290,6 +325,6 @@ If the input 'mmr' is N functions of M variables and `length(labels)=P` then the
 will be P functions of M variables.
 """
 function filter(labels::AbstractVector{<:Label}, mmr::MMResult)::MMResult
-    indexes = map(lbl->indexin(lbl, mmr[1]), labels)
-    return ( LabeledValues(labels(mmr[1])[indexes], values(mmr[1])[indexes]), mmr[2][indexes,:] )
+    indexes = map(lbl -> indexin(lbl, mmr[1]), labels)
+    return (LabeledValues(labels(mmr[1])[indexes], values(mmr[1])[indexes]), mmr[2][indexes, :])
 end

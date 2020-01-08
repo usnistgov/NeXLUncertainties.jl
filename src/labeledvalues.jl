@@ -21,8 +21,8 @@ struct LabeledValues
     ) = new(forward, reverse)
 
     function LabeledValues(
-        labels::Vector{<:Label},
-        values::Vector{Float64}
+        labels::AbstractVector{<:Label},
+        values::AbstractVector{Float64}
     )
         forward = Dict{Label,Float64}( labels[i]=>values[i] for i in eachindex(labels))
         reverse = Dict{Label, Int}( labels[i] => i for i in eachindex(labels))

@@ -8,10 +8,11 @@ Represents a floating point numerical value and an associated uncertainty (1σ).
 struct UncertainValue <: AbstractFloat
     value::Float64
     sigma::Float64
-    UncertainValue(val::Real, sigma::Real) =
-        convert(Float64, sigma) >= 0.0 ?
-        new(convert(Float64, val), convert(Float64, sigma)) :
-        error("σ must be non-negative.")
+
+    function UncertainValue(val::Real, sigma::Real)
+        @assert sigma >= 0.0
+        return new(convert(Float64, val), convert(Float64, sigma))
+    end
 end
 
 Base.convert(::Type{UncertainValue}, n::Real) =
@@ -19,6 +20,21 @@ Base.convert(::Type{UncertainValue}, n::Real) =
 
 Base.zero(::Type{UncertainValue}) = UncertainValue(0.0,0.0)
 Base.one(::Type{UncertainValue}) = UncertainValue(1.0,0.0)
+
+"""
+    poisson(val::Int)
+
+Creates an UncertainValue from an integer which is assumed to have σ = sqrt(val).
+"""
+poisson(val::Int) = UncertainValue(convert(Float64, val), sqrt(convert(Float64, val)))
+
+"""
+    uv(val::Real, σ::Real)
+
+Create an UncertainValue from a real value and 1σ uncertainty.
+"""
+uv(val::Real, σ::Real) = UncertainValue(val, σ)
+
 
 """
     max(uv1::UncertainValue, uv2::UncertainValue)
@@ -250,8 +266,6 @@ A and B are equivalent if |A-B| <= k σ(A-B)
 """
 equivalent(A::UncertainValue, B::UncertainValue, k=1.0) =
     abs(A.value-B.value) <= k * sqrt(A.sigma^2+B.sigma^2)
-
-uv(val::Real, sigma::Real) = UncertainValue(val, sigma)
 
 function Base.parse(::Type{UncertainValue}, str::AbstractString)::UncertainValue
     sp=split(str, r"(?:\+\-|\-\+|±)" )
