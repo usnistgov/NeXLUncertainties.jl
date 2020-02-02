@@ -145,6 +145,9 @@ function uvs(
     return uvs(labels,values,diagm(vars))
 end
 
+uvs(values::Pair{<:Label, UncertainValue}...) = uvs(Dict(values))
+uvs(value::Pair{<:Label, UncertainValue}) = uvs(Dict(value))
+
 function uvs(
         values::Dict{<:Label, UncertainValue}
 )
@@ -157,7 +160,25 @@ function uvs(
     return uvs(labels, vals, diagm(vars))
 end
 
+"""
+    estimated(labels::Vector{<:Label}, samples::Matrix{Float64})
 
+Estimate an UncertainValues based on a set of samples ('measurements').
+Computes the mean values and the covariance matrix from the expectation values.
+Each row `r` in samples represents a measured quantity as identified by `labels[r]`.
+Each column represents a single set of measurements of all the labeled quantities.
+"""
+function estimated(labels::Vector{<:Label}, samples::Matrix{Float64})
+    @assert length(labels)==size(samples,1) "label length must equal row count in estimated"
+    nvars, nsamples = size(samples,1), size(samples,2)
+    μ = mean.(samples[k,:] for k in 1:nvars)
+    n = collect( samples[k,:].-μ[k] for k in 1:nvars)
+    Σ = Matrix{Float64}(undef,nvars,nvars)
+    for j in 1:nvars, k in 1:j
+        Σ[j,k] = (Σ[k,j] = dot(n[j],n[k])/nsamples)
+    end
+    return uvs(labels, μ, Σ )
+end
 
 function checkUVS!(
     labels::Dict{<:Label,Int},
@@ -378,3 +399,19 @@ The uncertainty associated with specified label (k σ where default k=1)
 """
 uncertainty(lbl::Label, uvs::UncertainValues, k::Float64 = 1.0) =
     k * σ(lbl, uvs)
+
+function extract(labels::AbstractVector{<:Label}, uvss::UncertainValues)
+    idx = map(l->indexin(l,uvss), labels) # look it up once...
+    v = [ uvss.values[i] for i in idx ]
+    m = zeros(length(idx), length(idx))
+    for (r, rl) in enumerate(idx)
+        for (c, cl) in enumerate(idx)
+            m[c, r] = (m[r, c] = uvss.covariance[rl, cl])
+        end
+    end
+    return uvs(labels, v, m)
+end
+
+Base.indexin(lbl::Label, uvs::UncertainValues) = uvs.labels[lbl]
+
+labeledvalues(uvs::UncertainValues) = LabeledValues(labels(uvs), uvs.values)

@@ -163,6 +163,39 @@ function propagate(mm::MeasurementModel, inputs::UncertainValues)::UncertainValu
     return uvs(labels(outvals), values(outvals), jac * inputs.covariance * transpose(jac))
 end
 
+struct MCSampler
+    inputs::UncertainValues
+    zeros::LabeledValues
+    nonzeros::Dict{Label,Int}
+    mvnorm::MvNormal
+    rng::AbstractRNG
+
+    function MCSampler(inp::UncertainValues, rng::AbstractRNG, eps=1.0e-10)
+        f(lbl) = abs(fractional(inp[lbl])) < eps
+        z = Base.filter(f,labels(inp))
+        nz = Base.filter(lbl->!(lbl in z),labels(inp))
+        nonzeros = Dict( lbl=>i for (i,lbl) in enumerate(nz))
+        zeros = LabeledValues(z, Float64[ value(lbl, inp) for lbl in z ])
+        nzuvs = extract([ keys(nonzeros)...], inp)
+        mvnorm = MvNormal(nzuvs.values, nzuvs.covariance)
+        return new(inp, zeros, nonzeros, mvnorm, rng)
+    end
+end
+
+function sample(samp::MCSampler)::LabeledValues
+    reslbls = copy(labels(samp.inputs))
+    resvals = zeros(length(samp.inputs))
+    rvals = rand(samp.rng, samp.mvnorm)
+    for (i,lbl) in enumerate(reslbls)
+        if lbl in keys(samp.zeros)
+            resvals[i]=samp.zeros[lbl]
+        else
+            resvals[i] = rvals[samp.nonzeros[lbl]]
+        end
+    end
+    return LabeledValues(reslbls,resvals)
+end
+
 """
     mcpropagate(mm::MeasurementModel, inputs::UncertainValues, n::Int, parallel::Bool=true, rng::AbstractRNG = Random.GLOBAL_RNG)::UncertainValues
 
@@ -176,25 +209,21 @@ function mcpropagate(
     n::Int;
     parallel = false,
     rng::AbstractRNG = Random.GLOBAL_RNG,
-)::UncertainValues
-    function perform()
-        inputs = LabeledValues(inlabels, rand(rng, mvn))
-        return values(compute(mm, inputs, false)[1])
-    end
-    mvn = MvNormal(inputs.values, inputs.covariance)
+)
+    perform(mcs) = values(compute(mm, sample(mcs), false)[1])
+    mcs = MCSampler(inputs, rng, 1.0e-8)
     (outvals, _) = compute(mm, LabeledValues(labels(inputs), values(inputs)), false)
     samples, inlabels = Array{Float64}(undef, (length(outvals), n)), labels(inputs)
     if parallel && (nthreads() > 1)
         @threads for i = 1:n
-            samples[:, i] = perform()
+            samples[:, i] = perform(mcs)
         end
     else
         for i = 1:n
-            samples[:, i] = perform()
+            samples[:, i] = perform(mcs)
         end
     end
-    f = fit(MvNormal, samples)
-    return uvs(labels(outvals), f.μ, f.Σ.mat)
+    return estimated(labels(outvals), samples)
 end
 
 """
