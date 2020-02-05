@@ -3,6 +3,7 @@ using Random
 using LinearAlgebra
 using Base.Threads
 using Base.Iterators
+#using CSV
 
 """
     MeasurementModel
@@ -172,11 +173,12 @@ struct MCSampler
 
     function MCSampler(inp::UncertainValues, rng::AbstractRNG, eps=1.0e-10)
         f(lbl) = abs(fractional(inp[lbl])) < eps
-        z = Base.filter(f,labels(inp))
-        nz = Base.filter(lbl->!(lbl in z),labels(inp))
-        nonzeros = Dict( lbl=>i for (i,lbl) in enumerate(nz))
+        z = filter(f,labels(inp))
         zeros = LabeledValues(z, Float64[ value(lbl, inp) for lbl in z ])
-        nzuvs = extract([ keys(nonzeros)...], inp)
+        nz = filter(lbl->!(lbl in z), labels(inp))
+        nzuvs = extract(nz, inp)
+        # CSV.write(joinpath(homedir(),"Desktop\\znuvs.csv"), asa(DataFrame,nzuvs))
+        nonzeros = Dict( lbl=>indexin(lbl, nzuvs) for lbl in nz)
         mvnorm = MvNormal(nzuvs.values, nzuvs.covariance)
         return new(inp, zeros, nonzeros, mvnorm, rng)
     end
@@ -210,17 +212,18 @@ function mcpropagate(
     parallel = false,
     rng::AbstractRNG = Random.GLOBAL_RNG,
 )
-    perform(mcs) = values(compute(mm, sample(mcs), false)[1])
+    perform(inps) = values(compute(mm, inps, false)[1])
     mcs = MCSampler(inputs, rng, 1.0e-8)
+    # mvn = MvNormal(inputs.values, inputs.covariance)
     (outvals, _) = compute(mm, LabeledValues(labels(inputs), values(inputs)), false)
     samples, inlabels = Array{Float64}(undef, (length(outvals), n)), labels(inputs)
     if parallel && (nthreads() > 1)
-        @threads for i = 1:n
-            samples[:, i] = perform(mcs)
+        @threads for i in 1:n
+            samples[:, i] = perform(sample(mcs)) # rand(mvn))
         end
     else
-        for i = 1:n
-            samples[:, i] = perform(mcs)
+        for i in 1:n
+            samples[:, i] = perform(sample(mcs))
         end
     end
     return estimated(labels(outvals), samples)
@@ -231,34 +234,32 @@ end
 
 Calculate the output values for the specified set of input LabeledValues.
 """
-function compute(mm::MeasurementModel, inputs::LabeledValues)::LabeledValues
-    (outvals, _) = compute(mm, inputs, false)
-    return outvals
-end
+compute(mm::MeasurementModel, inputs::LabeledValues)::LabeledValues =
+    compute(mm, inputs, false)[1]
 
 """
-    MaintainInputs <: MeasurementModel
+    MaintainLabels <: MeasurementModel
 
 Carry over a subset of the input variables to the next step in a calculation.  Typically
 used in consort with a `ParallelMeasurementModel` when inputs to this step will also
 be required in subsequent steps.
 """
-struct MaintainInputs <: MeasurementModel
+struct MaintainLabels <: MeasurementModel
     labels::Vector{Label}
 
-    MaintainInputs(uvs::UncertainValues) = new(naturalorder(uvs))
-    MaintainInputs(labels::AbstractVector{<:Label}) = new(labels)
+    MaintainLabels(labels::AbstractVector{<:Label}) = new(labels)
+    MaintainLabels(ty, labels) = new(labelsByType(ty, labels))
 end
 
-function compute(mm::MaintainInputs, inputs::LabeledValues, withJac::Bool)::MMResult
-    res = collect(map(lbl -> value(inputs, lbl), mm.labels))
+function compute(mm::MaintainLabels, inputs::LabeledValues, withJac::Bool)::MMResult
+    vals = [ inputs[lbl] for lbl in mm.labels ]
     jac = withJac ? zeros(length(mm.labels), length(inputs)) : missing
     if withJac
-        for (i, lbl) in enumerate(mm.labels)
-            jac[i, indexin(lbl, inputs)] = 1.0
+        for (out, lbl) in enumerate(mm.labels)
+            jac[out, indexin(lbl, inputs)] = 1.0
         end
     end
-    return (LabeledValues(mm.labels, res), jac)
+    return (LabeledValues(mm.labels, vals), jac)
 end
 
 """
@@ -311,8 +312,8 @@ function compute(mm::ParallelMeasurementModel, inputs::LabeledValues, withJac::B
             results[i] = compute(mm.models[i], inputs, withJac)
         end
     end
-    outvals = reduce(merge, map(tp -> getindex(tp, 1), results))
-    jac = withJac ? vcat(map(tp -> getindex(tp, 2), results)...) : missing
+    outvals = mapreduce(mmr->mmr[1], merge, results)
+    jac = withJac ? vcat(map(mmr -> mmr[2], results)...) : missing
     return (outvals, jac)
 end
 
@@ -353,7 +354,7 @@ will be retained.  This method reorders the output values to match the order in 
 If the input 'mmr' is N functions of M variables and `length(labels)=P` then the result
 will be P functions of M variables.
 """
-function filter(labels::AbstractVector{<:Label}, mmr::MMResult)::MMResult
+function Base.filter(labels::AbstractVector{<:Label}, mmr::MMResult)::MMResult
     indexes = map(lbl -> indexin(lbl, mmr[1]), labels)
     return (LabeledValues(labels(mmr[1])[indexes], values(mmr[1])[indexes]), mmr[2][indexes, :])
 end

@@ -25,6 +25,7 @@ export value # Value portion
 include("label.jl")
 export Label # Abstract type to label variables in UncertainValues object
 export label # Construct a Label from a struct
+export labelsByType # filter a vector of labels for the specified Label type(s)
 export @nl_str # Shortcut to create a label from a string
 
 # Apply labels to the values in an array
@@ -50,7 +51,7 @@ export MeasurementModel
 export propagate
 export mcpropagate
 export compute
-export MaintainInputs
+export MaintainLabels
 export AllInputs
 export ParallelMeasurementModel
 export ComposedMeasurementModel

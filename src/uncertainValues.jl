@@ -214,7 +214,7 @@ correlation(a::Label, b::Label, uvs::UncertainValues) = covariance(a, b, uvs) / 
 Extract the covariance matrix associated with the variables specified in labels
 into a Matrix.
 """
-function Base.filter(uvs::UncertainValues, labels::Vector{<:Label})::Matrix
+function Base.filter(uvs::UncertainValues, labels::AbstractVector{<:Label})::Matrix
     idx = map(l->uvs.labels[l], labels) # look it up once...
     m = zeros(length(idx), length(idx))
     for (r, rl) in enumerate(idx)
@@ -223,6 +223,18 @@ function Base.filter(uvs::UncertainValues, labels::Vector{<:Label})::Matrix
         end
     end
     return m
+end
+
+function extract(labels::AbstractVector{<:Label}, uvss::UncertainValues)::UncertainValues
+    idx = map(l->indexin(l,uvss), labels) # look it up once...
+    vals = [ uvss.values[i] for i in idx ]
+    cov = zeros(length(idx), length(idx))
+    for (r, rl) in enumerate(idx)
+        for (c, cl) in enumerate(idx)
+            cov[c, r] = (cov[r, c] = uvss.covariance[rl, cl])
+        end
+    end
+    return uvs(labels, vals, cov)
 end
 
 Base.:*(aa::AbstractMatrix{Float64}, uvs::UncertainValues) =
@@ -246,8 +258,21 @@ Base.cat(uvss::AbstractArray{UncertainValues})::UncertainValues =
 Combines the disjoint UncertainValues in uvss into a single UncertainValues object.
 """
 function Base.cat(uvss::UncertainValues...)::UncertainValues
-    all = Dict{Label,Int}(lbl => i for (i, lbl) in enumerate(reduce(union, Base.keys.(uvss))))
-    @assert length(all) == sum(map(uvs -> length(uvs.labels), uvss)) "One or more labels were duplicated in cat(...)"
+    function combinelabels(us::UncertainValues...) # Maintains order as union doesn't
+        res = Label[]
+        for u in us
+            for lu in labels(u)
+                if !(lu in res)
+                    push!(res, lu)
+                else
+                    throw(ErrorException("Unable to combine UncertainValues with duplicate labels."))
+                end
+            end
+        end
+        return res
+    end
+    all = Dict{Label,Int}(lbl => i for (i, lbl) in enumerate(combinelabels(uvss...)))
+    # @assert length(all) == sum(map(uvs -> length(uvs.labels), uvss)) "One or more labels were duplicated in cat(...)"
     len = length(all)
     values, covar = zeros(Float64, len), zeros(Float64, len, len)
     # Precompute the indexes for speed ( index in all, index in uvs)
@@ -297,20 +322,6 @@ want just a unordered set of labels.
 sortedlabels(uvs::UncertainValues) =
     sort([Base.keys(uvs.labels)...], lt = (l, m) -> isless(repr(l), repr(m)))
 
-"""
-    labels(uvs::UncertainValues)::Vector{Label}
-
-Returns a list of labels in the order in which they are represented within the
-UncertainValues object.  Matches the order in which values(...) returns the values.
-"""
-function labels(uvs::UncertainValues)::Vector{Label}
-    res = Array{Label}(undef, length(uvs.labels))
-    for (lbl, idx) in uvs.labels
-        res[idx] = lbl
-    end
-    return res
-end
-
 Base.keys(uvs::UncertainValues) = Base.keys(uvs.labels)
 
 function Base.getindex(uvs::UncertainValues, lbl::Label)::UncertainValue
@@ -328,12 +339,12 @@ Base.length(uvs::UncertainValues) = length(uvs.labels)
 eachlabel(uvs::UncertainValues) = Base.keys(uvs.labels)
 
 """
-    naturalorder(uvs::UncertainValues)::Vector{<:Label}
+    labels(uvs::UncertainValues)::Vector{<:Label}
 
 Returns a Vector of Label in the order in which they appear in `uvs.values` and
 `uvs.covariance`.
 """
-function naturalorder(uvs::UncertainValues)::Vector{<:Label}
+function labels(uvs::UncertainValues)::Vector{<:Label}
     res = Array{Label}(undef,length(uvs.labels))
     for (k, v) in uvs.labels
         res[v] = k
@@ -391,7 +402,6 @@ function asa( #
     return df
 end
 
-
 """
     uncertainty(lbl::Label, uvs::UncertainValues, k::Float64=1.0)
 
@@ -400,18 +410,11 @@ The uncertainty associated with specified label (k σ where default k=1)
 uncertainty(lbl::Label, uvs::UncertainValues, k::Float64 = 1.0) =
     k * σ(lbl, uvs)
 
-function extract(labels::AbstractVector{<:Label}, uvss::UncertainValues)
-    idx = map(l->indexin(l,uvss), labels) # look it up once...
-    v = [ uvss.values[i] for i in idx ]
-    m = zeros(length(idx), length(idx))
-    for (r, rl) in enumerate(idx)
-        for (c, cl) in enumerate(idx)
-            m[c, r] = (m[r, c] = uvss.covariance[rl, cl])
-        end
-    end
-    return uvs(labels, v, m)
-end
-
 Base.indexin(lbl::Label, uvs::UncertainValues) = uvs.labels[lbl]
 
+"""
+    labeledvalues(uvs::UncertainValues)
+
+Converts the values of an UncertainValues object into a LabeledValues object.
+"""
 labeledvalues(uvs::UncertainValues) = LabeledValues(labels(uvs), uvs.values)

@@ -20,3 +20,17 @@ Base.isequal(bl1::BasicLabel{T}, bl2::BasicLabel{T}) where {T} =
 Base.isequal(l1::Label, l2::Label) = false
 Base.hash(bl::BasicLabel, h::UInt) =
     hash(bl.hc, h)
+
+labelsByType(ty::Type{<:Label}, labels::AbstractVector{<:Label}) =
+    filter(lbl->typeof(lbl)==ty, labels)
+
+labelsByType(types::AbstractVector{DataType}, labels::AbstractVector{<:Label}) =
+    mapreduce(ty->labelsByType(ty, labels), append!, types)
+
+labelsByType(ty::Type{<:Label}, uvs::UncertainValues) =
+    filter(lbl->typeof(lbl)==ty, labels(uvs))
+
+function labelsByType(types::AbstractVector{DataType}, uvs::UncertainValues)
+    lbls = labels(uvs)
+    mapreduce(ty->labelsByType(ty, lbls), append!, types)
+end

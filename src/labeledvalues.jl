@@ -32,14 +32,8 @@ end
 
 Base.copy(lv::LabeledValues) = LabeledValues(copy(lv.forward), copy(lv.reverse))
 
-Base.merge(lv1::LabeledValues, lv2::LabeledValues) = merge!(copy(lv1), lv2)
-
-function Base.merge!(lv1::LabeledValues, lv2::LabeledValues)
-    for (lbl,val) in lv2.forward
-        lv1[lbl]=val
-    end
-    return lv1
-end
+Base.merge(lvs::LabeledValues...) =
+    LabeledValues(vcat(map(labels, lvs)...), vcat(map(values, lvs)...))
 
 """
     value(lv::LabeledValues, lbl::Label)::Float64

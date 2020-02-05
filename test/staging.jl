@@ -87,7 +87,7 @@ function NeXLUncertainties.compute(kr::KRatioModel, inputs::LabeledValues, withJ
 end
 
 retain = missing # AllInputs()
-norm2char(id) = MaintainInputs([ label("R[$i,$id]") for i in ( "low","peak","high") ])
+norm2char(id) = MaintainLabels([ label("R[$i,$id]") for i in ( "low","peak","high") ])
 ICharModel(id::String) = IChar(id) ∘ ( NormI("low",id) | NormI("peak",id) | NormI("high",id) | norm2char(id))
 TotalModel(id::String) = (KRatioModel(id) | retain) ∘ ( ICharModel("std") | ICharModel("unk") | retain)
 
