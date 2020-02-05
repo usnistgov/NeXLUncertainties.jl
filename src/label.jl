@@ -26,11 +26,3 @@ labelsByType(ty::Type{<:Label}, labels::AbstractVector{<:Label}) =
 
 labelsByType(types::AbstractVector{DataType}, labels::AbstractVector{<:Label}) =
     mapreduce(ty->labelsByType(ty, labels), append!, types)
-
-labelsByType(ty::Type{<:Label}, uvs::UncertainValues) =
-    filter(lbl->typeof(lbl)==ty, labels(uvs))
-
-function labelsByType(types::AbstractVector{DataType}, uvs::UncertainValues)
-    lbls = labels(uvs)
-    mapreduce(ty->labelsByType(ty, lbls), append!, types)
-end

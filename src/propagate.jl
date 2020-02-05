@@ -106,17 +106,17 @@ Note:
 
     (h ∘ (g ∘ f))(x) == ((h ∘ g) ∘ f)(x) == (h ∘ g ∘ f)(x)
 """
-function Base.:∘(mm1::MeasurementModel, mm2::MeasurementModel)
-    if mm1 isa ComposedMeasurementModel
-        push!(mm2.models, mm1)
-        return mm2
-    elseif mm2 isa ComposedMeasurementModel
-        insert!(mm1.models, 1, mm2)
-        return mm1
-    else
-        return ComposedMeasurementModel([mm2, mm1])
-    end
-end
+Base.:∘(mm1::ComposedMeasurementModel, mm2::MeasurementModel) =
+    ComposedMeasurementModel([mm2, mm1.models...])
+
+Base.:∘(mm1::MeasurementModel, mm2::ComposedMeasurementModel) =
+    ComposedMeasurementModel([mm2.models..., mm1])
+
+Base.:∘(mm1::ComposedMeasurementModel, mm2::ComposedMeasurementModel) =
+    ComposedMeasurementModel([mm2.models..., mm1.models...])
+
+Base.:∘(mm1::MeasurementModel, mm2::MeasurementModel) =
+    ComposedMeasurementModel([mm2, mm1])
 
 # So missing measurement models compile down to a NoOP
 Base.:∘(mm1::MeasurementModel, mm2::Missing) = mm1
@@ -137,17 +137,17 @@ Examples:
     z = (f | g | h)(x) # Conceptually like combine(f(x), g(x), h(x)) into a single output
     (k ∘ (f | g | h))(x) == k(z) # Conceptually like k(f(x),g(x),h(x))
 """
-function Base.:|(mm1::MeasurementModel, mm2::MeasurementModel)
-    if mm1 isa ParallelMeasurementModel
-        push!(mm1.models, mm2)
-        return mm1
-    elseif mm2 isa ParallelMeasurementModel
-        push!(mm2.models, mm1)
-        return mm2
-    else
-        return ParallelMeasurementModel([mm1, mm2], false)
-    end
-end
+Base.:|(mm1::ParallelMeasurementModel, mm2::MeasurementModel) =
+    ParallelMeasurementModel([mm1.models..., mm2] )
+
+Base.:|(mm1::MeasurementModel, mm2::ParallelMeasurementModel) =
+    ParallelMeasurementModel([mm1, mm2.models...])
+
+Base.:|(mm1::ParallelMeasurementModel, mm2::ParallelMeasurementModel) =
+    ParallelMeasurementModel([mm1.models..., mm2.models...])
+
+Base.:|(mm1::MeasurementModel, mm2::MeasurementModel) =
+    ParallelMeasurementModel([mm1, mm2], false)
 
 # So missing measurement models compile down to a NoOP
 Base.:|(mm1::MeasurementModel, mm2::Missing) = mm1

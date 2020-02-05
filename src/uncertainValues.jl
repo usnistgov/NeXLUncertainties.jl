@@ -418,3 +418,11 @@ Base.indexin(lbl::Label, uvs::UncertainValues) = uvs.labels[lbl]
 Converts the values of an UncertainValues object into a LabeledValues object.
 """
 labeledvalues(uvs::UncertainValues) = LabeledValues(labels(uvs), uvs.values)
+
+labelsByType(ty::Type{<:Label}, uvs::UncertainValues) =
+    filter(lbl->typeof(lbl)==ty, labels(uvs))
+
+function labelsByType(types::AbstractVector{DataType}, uvs::UncertainValues)
+    lbls = labels(uvs)
+    mapreduce(ty->labelsByType(ty, lbls), append!, types)
+end
