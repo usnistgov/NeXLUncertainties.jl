@@ -91,69 +91,6 @@ end
 
 
 """
-    (∘)(mm1::MeasurementModel, mm2::MeasurementModel)
-
-Implements composition of `MeasurementModel`s.
-
-Examples:
-
-    (g ∘ f)(x) == propagate(ComposedMeasurementModel([f, g]), x)
-    (g ∘ f)(x) == g(f(x))
-    (h ∘ g ∘ f)(x) == propagate(ComposedMeasurementModel([f, g, h]), x)
-    (h ∘ g ∘ f)(x) == h(g(f(x)))
-
-Note:
-
-    (h ∘ (g ∘ f))(x) == ((h ∘ g) ∘ f)(x) == (h ∘ g ∘ f)(x)
-"""
-Base.:∘(mm1::ComposedMeasurementModel, mm2::MeasurementModel) =
-    ComposedMeasurementModel([mm2, mm1.models...])
-
-Base.:∘(mm1::MeasurementModel, mm2::ComposedMeasurementModel) =
-    ComposedMeasurementModel([mm2.models..., mm1])
-
-Base.:∘(mm1::ComposedMeasurementModel, mm2::ComposedMeasurementModel) =
-    ComposedMeasurementModel([mm2.models..., mm1.models...])
-
-Base.:∘(mm1::MeasurementModel, mm2::MeasurementModel) =
-    ComposedMeasurementModel([mm2, mm1])
-
-# So missing measurement models compile down to a NoOP
-Base.:∘(mm1::MeasurementModel, mm2::Missing) = mm1
-Base.:∘(mm1::Missing, mm2::MeasurementModel) = mm2
-
-"""
-    (|)(mm1::MeasurementModel, mm2::MeasurementModel)
-
-Implements a mechanism to combine `MeasurementModel`s that work on the same input to
-produce output that is the combination of the outputs of all the measurement models.  This
-is useful when a calculation forks into 2 or more distinct calculations which are later
-composed as is shown in the examples.
-
-Examples:
-
-    j = f | g # Creates a ParallelMeasurementModel([f,g], false)
-    y = j(x) # where y combines the outputs of f(x) and h(x)
-    z = (f | g | h)(x) # Conceptually like combine(f(x), g(x), h(x)) into a single output
-    (k ∘ (f | g | h))(x) == k(z) # Conceptually like k(f(x),g(x),h(x))
-"""
-Base.:|(mm1::ParallelMeasurementModel, mm2::MeasurementModel) =
-    ParallelMeasurementModel([mm1.models..., mm2] )
-
-Base.:|(mm1::MeasurementModel, mm2::ParallelMeasurementModel) =
-    ParallelMeasurementModel([mm1, mm2.models...])
-
-Base.:|(mm1::ParallelMeasurementModel, mm2::ParallelMeasurementModel) =
-    ParallelMeasurementModel([mm1.models..., mm2.models...])
-
-Base.:|(mm1::MeasurementModel, mm2::MeasurementModel) =
-    ParallelMeasurementModel([mm1, mm2], false)
-
-# So missing measurement models compile down to a NoOP
-Base.:|(mm1::MeasurementModel, mm2::Missing) = mm1
-Base.:|(mm1::Missing, mm2::MeasurementModel) = mm2
-
-"""
     propagate(mm::MeasurementModel, uvs::UncertainValues)::UncertainValues
 
 Propagate the input (measured values as UncertainValues) through the MeasurementModel to
@@ -342,6 +279,70 @@ function compute(smm::ComposedMeasurementModel, inputs::LabeledValues, withJac::
     end
     return (nextinp, nextjac)
 end
+
+"""
+    (∘)(mm1::MeasurementModel, mm2::MeasurementModel)
+
+Implements composition of `MeasurementModel`s.
+
+Examples:
+
+    (g ∘ f)(x) == propagate(ComposedMeasurementModel([f, g]), x)
+    (g ∘ f)(x) == g(f(x))
+    (h ∘ g ∘ f)(x) == propagate(ComposedMeasurementModel([f, g, h]), x)
+    (h ∘ g ∘ f)(x) == h(g(f(x)))
+
+Note:
+
+    (h ∘ (g ∘ f))(x) == ((h ∘ g) ∘ f)(x) == (h ∘ g ∘ f)(x)
+"""
+Base.:∘(mm1::ComposedMeasurementModel, mm2::MeasurementModel) =
+    ComposedMeasurementModel([mm2, mm1.models...])
+
+Base.:∘(mm1::MeasurementModel, mm2::ComposedMeasurementModel) =
+    ComposedMeasurementModel([mm2.models..., mm1])
+
+Base.:∘(mm1::ComposedMeasurementModel, mm2::ComposedMeasurementModel) =
+    ComposedMeasurementModel([mm2.models..., mm1.models...])
+
+Base.:∘(mm1::MeasurementModel, mm2::MeasurementModel) =
+    ComposedMeasurementModel([mm2, mm1])
+
+# So missing measurement models compile down to a NoOP
+Base.:∘(mm1::MeasurementModel, mm2::Missing) = mm1
+Base.:∘(mm1::Missing, mm2::MeasurementModel) = mm2
+
+"""
+    (|)(mm1::MeasurementModel, mm2::MeasurementModel)
+
+Implements a mechanism to combine `MeasurementModel`s that work on the same input to
+produce output that is the combination of the outputs of all the measurement models.  This
+is useful when a calculation forks into 2 or more distinct calculations which are later
+composed as is shown in the examples.
+
+Examples:
+
+    j = f | g # Creates a ParallelMeasurementModel([f,g], false)
+    y = j(x) # where y combines the outputs of f(x) and h(x)
+    z = (f | g | h)(x) # Conceptually like combine(f(x), g(x), h(x)) into a single output
+    (k ∘ (f | g | h))(x) == k(z) # Conceptually like k(f(x),g(x),h(x))
+"""
+Base.:|(mm1::ParallelMeasurementModel, mm2::MeasurementModel) =
+    ParallelMeasurementModel([mm1.models..., mm2] )
+
+Base.:|(mm1::MeasurementModel, mm2::ParallelMeasurementModel) =
+    ParallelMeasurementModel([mm1, mm2.models...])
+
+Base.:|(mm1::ParallelMeasurementModel, mm2::ParallelMeasurementModel) =
+    ParallelMeasurementModel([mm1.models..., mm2.models...])
+
+Base.:|(mm1::MeasurementModel, mm2::MeasurementModel) =
+    ParallelMeasurementModel([mm1, mm2], false)
+
+# So missing measurement models compile down to a NoOP
+Base.:|(mm1::MeasurementModel, mm2::Missing) = mm1
+Base.:|(mm1::Missing, mm2::MeasurementModel) = mm2
+
 
 """
     filter(labels::AbstractVector{<:Label}, mmr::MMResult)::MMResult
