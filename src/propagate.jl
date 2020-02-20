@@ -183,20 +183,27 @@ be required in subsequent steps.
 """
 struct MaintainLabels <: MeasurementModel
     labels::Vector{Label}
+    all::Bool
 
-    MaintainLabels(labels::AbstractVector{<:Label}) = new(labels)
-    MaintainLabels(ty, labels) = new(labelsByType(ty, labels))
+    MaintainLabels(labels::AbstractVector{<:Label}, all::Bool=false) = new(labels,all)
+    MaintainLabels(ty, labels, all::Bool=false) = new(labelsByType(ty, labels),all)
+    MaintainLabels(label::Label, all::Bool=false) = new([label],all)
 end
 
 function compute(mm::MaintainLabels, inputs::LabeledValues, withJac::Bool)::MMResult
-    vals = [ inputs[lbl] for lbl in mm.labels ]
-    jac = withJac ? zeros(length(mm.labels), length(inputs)) : missing
-    if withJac
-        for (out, lbl) in enumerate(mm.labels)
-            jac[out, indexin(lbl, inputs)] = 1.0
+    if mm.all
+        jac = withJac ? Array{Float64}(I, length(inputs), length(inputs)) : missing
+        return (inputs, jac)
+    else
+        vals = [ inputs[lbl] for lbl in mm.labels ]
+        jac = withJac ? zeros(length(mm.labels), length(inputs)) : missing
+        if withJac
+            for (out, lbl) in enumerate(mm.labels)
+                jac[out, indexin(lbl, inputs)] = 1.0
+            end
         end
+        return (LabeledValues(mm.labels, vals), jac)
     end
-    return (LabeledValues(mm.labels, vals), jac)
 end
 
 """

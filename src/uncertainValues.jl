@@ -14,7 +14,7 @@ correlation coefficient between -1.0 and 1.0).  The tests are approximate
 to handle rounding errors but when a symmetric pair of values are not precisely
 equal they are set equal and when the correlation coefficient is slightly outside
 [-1,1], it is restricted to within these bounds. Thus the input matrix can be
-modified by this "check" function.
+modified, in ways that are probably benign, by this "check" function.
 """
 function checkcovariance!(cov::AbstractMatrix{Float64}, tol = 1.0e-6)::Bool
     sz = size(cov)
@@ -168,7 +168,7 @@ Computes the mean values and the covariance matrix from the expectation values.
 Each row `r` in samples represents a measured quantity as identified by `labels[r]`.
 Each column represents a single set of measurements of all the labeled quantities.
 """
-function estimated(labels::Vector{<:Label}, samples::Matrix{Float64})
+function estimated(labels::Vector{<:Label}, samples::Matrix{Float64})::UncertainValues
     @assert length(labels)==size(samples,1) "label length must equal row count in estimated"
     nvars, nsamples = size(samples,1), size(samples,2)
     μ = mean.(samples[k,:] for k in 1:nvars)
@@ -193,6 +193,7 @@ function checkUVS!(
     end
     checkcovariance!(covar)
 end
+
 """
     σ(lbl::Label, uvs::UncertainValues)
 
@@ -303,7 +304,7 @@ function Base.show(io::IO, ::MIME"text/plain", uvs::UncertainValues)
     trim(str, len) = str[1:min(len, length(str))] * " "^max(0, len - min(len, length(str)))
     lbls = sortedlabels(uvs)
     print(io, "Variable       Value              ")
-    foreach(l -> print(io, trim("$l", 12)), lbls)
+    foreach(l -> print(io, trim(repr(l), 12)), lbls)
     for (r, rl) in enumerate(lbls)
         println(io)
         print(io, trim("$rl", 10) * @sprintf(" | %-8.3g |", value(rl, uvs)))
