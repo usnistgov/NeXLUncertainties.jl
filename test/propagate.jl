@@ -11,7 +11,7 @@ using Random
     f(a, b, c) = 3.2 * a * b * c
     g(a, b, c) = 2.3 * a * b + 1.8 * a * c
 
-    function NeXLUncertainties.compute(mm::TestMeasurementModel, inputs::LabeledValues, withJac::Bool)
+    function NeXLUncertainties.compute(mm::TestMeasurementModel, inputs::LabeledValues, withJac::Bool)::MMResult
         la, lb, lc = label.([ "A", "B", "C"])
         a, b, c = inputs[la], inputs[lb], inputs[lc]
 
@@ -39,7 +39,8 @@ using Random
         cac * da * dc cbc * db * dc dc^2
     ]
 
-    resc = compute(TestMeasurementModel(), LabeledValues(labels, values))
+    tmm = TestMeasurementModel()
+    resc = tmm(LabeledValues(labels, values))
 
     @test resc[label("D")] == d(a, b, c)
     @test resc[label("E")] == e(a, b, c)
@@ -108,7 +109,7 @@ end;
         sample::String
     end
 
-    function NeXLUncertainties.compute(ni::NormI, inputs::LabeledValues, withJac::Bool)
+    function NeXLUncertainties.compute(ni::NormI, inputs::LabeledValues, withJac::Bool)::MMResult
         lI, lt, li = label("I[$(ni.position),$(ni.sample)]"),
             label("t[$(ni.position),$(ni.sample)]"),
             label("i[$(ni.position),$(ni.sample)]")
@@ -151,7 +152,7 @@ end;
         id::String
     end
 
-    function NeXLUncertainties.compute(kr::KRatioModel, inputs::LabeledValues, withJac::Bool)
+    function NeXLUncertainties.compute(kr::KRatioModel, inputs::LabeledValues, withJac::Bool)::MMResult
         lIstd, lIunk = nl"Ichar[std]", nl"Ichar[unk]"
         labels = [label("k[$(kr.id)]")]
         results = [inputs[lIunk] / inputs[lIstd]]

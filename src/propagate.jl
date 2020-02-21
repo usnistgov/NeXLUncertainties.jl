@@ -89,6 +89,11 @@ function (mm::MeasurementModel)(inputs::Dict{<:Label, UncertainValue})::Uncertai
     return propagate(mm, uvs(inputs))
 end
 
+function (mm::MeasurementModel)(inputs::LabeledValues)::LabeledValues
+    return compute(mm,inputs)
+end
+
+
 
 """
     propagate(mm::MeasurementModel, uvs::UncertainValues)::UncertainValues

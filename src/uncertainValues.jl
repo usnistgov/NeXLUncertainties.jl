@@ -215,7 +215,7 @@ correlation(a::Label, b::Label, uvs::UncertainValues) = covariance(a, b, uvs) / 
 Extract the covariance matrix associated with the variables specified in labels
 into a Matrix.
 """
-function Base.filter(uvs::UncertainValues, labels::AbstractVector{<:Label})::Matrix
+function Base.filter(uvs::UncertainValues, labels::Vector{<:Label})::Matrix
     idx = map(l->uvs.labels[l], labels) # look it up once...
     m = zeros(length(idx), length(idx))
     for (r, rl) in enumerate(idx)
