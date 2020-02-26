@@ -20,6 +20,8 @@ Base.convert(::Type{UncertainValue}, n::Real) =
 
 Base.zero(::Type{UncertainValue}) = UncertainValue(0.0,0.0)
 Base.one(::Type{UncertainValue}) = UncertainValue(1.0,0.0)
+Base.add_sum(x::UncertainValue, y::UncertainValue)::Real = x.value + y.value
+Base.add_sum(x::AbstractFloat, y::UncertainValue)::Real = x + y.value
 
 """
     poisson(val::Int)
