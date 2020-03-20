@@ -194,12 +194,22 @@ function checkUVS!(
     checkcovariance!(covar)
 end
 
+Base.haskey(uvs::UncertainValues, lbl::Label) = haskey(uvs.labels, lbl)
+
+variance(lbl::Label, uvs::UncertainValues) =
+    uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]]
+
+variance(lbl::Label, uvs::UncertainValues, default) =
+    haskey(uvs.labels, lbl) ? uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]] : default
+
+
 """
     σ(lbl::Label, uvs::UncertainValues)
 
 Returns the 1σ uncertainty associated with the specified label
 """
 σ(lbl::Label, uvs::UncertainValues) = sqrt(variance(lbl, uvs))
+σ(lbl::Label, uvs::UncertainValues, def) = haskey(uvs.labels, lbl) ? sqrt(variance(lbl, uvs)) : def
 
 
 """
@@ -359,6 +369,7 @@ end
 The value associate with the Label.
 """
 value(lbl::Label, uvs::UncertainValues) = uvs.values[uvs.labels[lbl]]
+value(lbl::Label, uvs::UncertainValues, default) = haskey(uvs.labels, lbl) ? uvs.values[uvs.labels[lbl]] : default
 
 """
     values(uvs::UncertainValues)::Vector{Float64}
@@ -376,6 +387,10 @@ The covariance between the two variables.
 covariance(lbl1::Label, lbl2::Label, uvs::UncertainValues) =
     uvs.covariance[uvs.labels[lbl1], uvs.labels[lbl2]]
 
+covariance(lbl1::Label, lbl2::Label, uvs::UncertainValues, default) =
+    haskey(uvs.labels, lbl1) && haskey(uvs.labels, lbl2) ? #
+        uvs.covariance[uvs.labels[lbl1], uvs.labels[lbl2]] : default
+
 """
    variance(lbl::Label, uvs::UncertainValues)
 
@@ -383,6 +398,9 @@ The variance associated with the specified Label.
 """
 variance(lbl::Label, uvs::UncertainValues) =
     uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]]
+variance(lbl::Label, uvs::UncertainValues, default) =
+    haskey(uvs.labels, lbl) ? uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]] : default
+
 
 function asa( #
     ::Type{DataFrame},
