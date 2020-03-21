@@ -1,9 +1,9 @@
 # Implements a simple class for propagating uncertainties using
 # the formalism in ISO GUM (JCGM 100 and JCGM 102).
-using SparseArrays
 using Printf
 using LinearAlgebra
 using DataFrames
+using SparseArrays
 
 """
     checkcovariance!(cov::AbstractMatrix)

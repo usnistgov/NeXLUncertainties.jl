@@ -1,7 +1,6 @@
 using Test
 using NeXLUncertainties
 
-using SparseArrays
 @testset "UncertainValues" begin
         @testset "Label" begin
                 l1a = label(123)
