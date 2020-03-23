@@ -1,4 +1,5 @@
 using Printf
+using Statistics
 
 """
     UncertainValue
@@ -64,23 +65,50 @@ that it could be smaller.
 Base.min(uv1::UncertainValue, uv2::UncertainValue) =
     uv1.value ≠ uv2.value ? (uv1.value > uv2.value ? uv2 : uv1) : (uv1.sigma > uv2.sigma ? uv1 : uv2)
 
-Base.minimum(uvs::AbstractArray{UncertainValue}) =
+Base.minimum(uvs::AbstractVector{UncertainValue}) =
     reduce(min, uvs)
 
 Base.minimum(xs::Tuple{UncertainValue, Vararg{UncertainValue}}) =
     reduce(min, xs)
 
-Base.maximum(uvs::AbstractArray{UncertainValue}) =
+Base.maximum(uvs::AbstractVector{UncertainValue}) =
     reduce(max, uvs)
 
 Base.maximum(xs::Tuple{UncertainValue, Vararg{UncertainValue}}) =
     reduce(max, xs)
 
-Base.sum(xs::Tuple{UncertainValue, Vararg{UncertainValue}}) =
-    UncertainValue(sum(v->value(x) for x in xs), sqrt(sum(v->variance(x) for x in xs)))
+Base.sum(xs::UncertainValue...) =
+    UncertainValue(sum(value(x) for x in xs), sqrt(sum(variance(x) for x in xs)))
 
-Base.sum(uvs::AbstractArray{UncertainValue}) =
-    UncertainValue(sum(v->value(x) for x in uvs), sqrt(sum(v->variance(x) for x in uvs)))
+Base.sum(uvs::AbstractVector{UncertainValue}) =
+    UncertainValue(sum(value(x) for x in uvs), sqrt(sum(variance(x) for x in uvs)))
+
+
+"""
+    Statistics.mean(uvs::UncertainValue...)
+    Statistics.mean(uvs::AbstractVector{UncertainValue})
+
+The variance weighted mean of a collection of UncertainValue items.
+(see https://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Variance_weights).
+"""
+Statistics.mean(uvs::AbstractVector{UncertainValue}) =
+    UncertainValue(
+        sum(value(x)/variance(x) for x in uvs)/sum(1.0/variance(x) for x in uvs),
+        sqrt(1.0/sum(1.0/variance(x) for x in uvs)))
+Statistics.mean(uvs::UncertainValue...) =
+    UncertainValue(
+        sum(value(x)/variance(x) for x in uvs)/sum(1.0/variance(x) for x in uvs),
+        sqrt(1.0/sum(1.0/variance(x) for x in uvs)))
+
+"""
+    Statistics.std(uvs::UncertainValue...)
+
+The standard deviation of the value portion of the collection of UncertainValue items.
+"""
+Statistics.std(uvs::UncertainValue...) =
+    std(value(x) for x in uvs)
+Statistics.std(uvs::AbstractVector{UncertainValue}) =
+    std(value(x) for x in uvs)
 
 """
     variance(uv::UncertainValue)
