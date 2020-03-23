@@ -196,13 +196,6 @@ end
 
 Base.haskey(uvs::UncertainValues, lbl::Label) = haskey(uvs.labels, lbl)
 
-variance(lbl::Label, uvs::UncertainValues) =
-    uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]]
-
-variance(lbl::Label, uvs::UncertainValues, default) =
-    haskey(uvs.labels, lbl) ? uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]] : default
-
-
 """
     σ(lbl::Label, uvs::UncertainValues)
 
