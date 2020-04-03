@@ -45,6 +45,7 @@ export fractional # fractional uncertainty
 export correlation # Pearson correlation coefficient
 export estimated # Estimate an UncertainValues from an ensemble of measurements.
 export labeledvalues # Extract the values as a LabeledValues object
+export extract #
 
 include("propagate.jl")
 export MeasurementModel

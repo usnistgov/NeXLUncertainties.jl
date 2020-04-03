@@ -30,6 +30,9 @@ struct LabeledValues
     end
 end
 
+Base.show(io::IO, lv::LabeledValues) =
+    print(io,"LabeledValues[\n"*join(("\t"*repr(lbl)*" => "*repr(val) for (lbl, val) in lv.forward), "\n")*"\n]")
+
 Base.copy(lv::LabeledValues) = LabeledValues(copy(lv.forward), copy(lv.reverse))
 
 Base.merge(lvs::LabeledValues...) =

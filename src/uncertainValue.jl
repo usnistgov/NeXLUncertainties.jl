@@ -308,5 +308,31 @@ function Base.parse(::Type{UncertainValue}, str::AbstractString)::UncertainValue
     UncertainValue(val, sigma)
 end
 
-Base.show(io::IO,  uv::UncertainValue) =
-    @printf(io,"%0.3g ± %0.3g",uv.value,uv.sigma)
+function Base.show(io::IO,  uv::UncertainValue)
+    lr = uv.sigma>0 ? log10(abs(uv.value)/uv.sigma)+2.0 : 4.0
+    if log10(uv.value)<lr
+        if lr>=6.0
+            @printf(io,"%0.7g ± %0.2g",uv.value,uv.sigma)
+        elseif lr>=5.0
+            @printf(io,"%0.6g ± %0.2g",uv.value,uv.sigma)
+        elseif lr>=4.0
+            @printf(io,"%0.5g ± %0.2g",uv.value,uv.sigma)
+        elseif lr>=3.0
+            @printf(io,"%0.4g ± %0.2g",uv.value,uv.sigma)
+        else
+            @printf(io,"%0.3g ± %0.2g",uv.value,uv.sigma)
+        end
+    else
+        if lr>6.0
+            @printf(io,"%0.7e ± %0.2e",uv.value,uv.sigma)
+        elseif lr>5.0
+            @printf(io,"%0.6e ± %0.2e",uv.value,uv.sigma)
+        elseif lr>4.0
+            @printf(io,"%0.5e ± %0.2e",uv.value,uv.sigma)
+        elseif lr>3.0
+            @printf(io,"%0.4e ± %0.2e",uv.value,uv.sigma)
+        else
+            @printf(io,"%0.3e ± %0.2e",uv.value,uv.sigma)
+        end
+    end
+end

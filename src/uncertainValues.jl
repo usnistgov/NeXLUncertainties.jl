@@ -438,3 +438,6 @@ function labelsByType(types::AbstractVector{DataType}, uvs::UncertainValues)
     lbls = labels(uvs)
     mapreduce(ty->labelsByType(ty, lbls), append!, types)
 end
+
+extract(ty::Type{T}, uvs::UncertainValues) where {T<:Label} =
+    Dict(lbl=>uvs[lbl] for lbl in filter(l->l isa ty,labels(uvs)))
