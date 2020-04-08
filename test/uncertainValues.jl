@@ -26,7 +26,6 @@ using NeXLUncertainties
                         0.0            0.2*0.2*0.3    0.3^2
                  ]
                 @test checkcovariance!(cov)
-                @test checkcovariance!(sparse(cov))
 
                 bad = [ 0.1^2          -0.29*0.1*0.2  0.0;
                         -0.3*0.1*0.2   0.2^2          0.2*0.2*0.3;
@@ -34,7 +33,6 @@ using NeXLUncertainties
                  ]
 
                 @test_throws ErrorException checkcovariance!(bad)
-                @test_throws ErrorException checkcovariance!(sparse(bad))
 
                 lbls = [label("X0"),label("X1"),label("Z")]
                 vals=[2.0, 8.0,  12.0]
