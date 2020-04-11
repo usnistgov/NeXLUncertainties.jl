@@ -16,8 +16,8 @@ struct UncertainValue <: AbstractFloat
     end
 end
 
-Base.convert(::Type{UncertainValue}, n::Real) =
-    typeof(n) == UncertainValue ? n : UncertainValue(convert(Float64, n), 0.0)
+Base.convert(::Type{UncertainValue}, n::Real) = UncertainValue(convert(Float64, n), 0.0)
+Base.convert(::Type{UncertainValue}, n::UncertainValue) = n
 
 Base.zero(::Type{UncertainValue}) = UncertainValue(0.0,0.0)
 Base.one(::Type{UncertainValue}) = UncertainValue(1.0,0.0)
