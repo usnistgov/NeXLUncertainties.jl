@@ -24,6 +24,13 @@ Base.one(::Type{UncertainValue}) = UncertainValue(1.0,0.0)
 Base.add_sum(x::UncertainValue, y::UncertainValue)::Real = x.value + y.value
 Base.add_sum(x::AbstractFloat, y::UncertainValue)::Real = x + y.value
 
+function Base.round(uva::UncertainValue)
+    r = convert(Int, ceil(max(1,log10(max(σ(uva), abs(value(uva)))/σ(uva)))))+2
+    return uv(round(value(uva), RoundNearestTiesUp, sigdigits=r), round(σ(uva), RoundNearestTiesUp, sigdigits=2))
+end
+
+
+
 """
     poisson(val::Int)
 
@@ -310,7 +317,7 @@ end
 
 function Base.show(io::IO,  uv::UncertainValue)
     lr = uv.sigma>0 ? log10(abs(uv.value)/uv.sigma)+2.0 : 4.0
-    if log10(uv.value)<lr
+    if log10(abs(uv.value))<lr
         if lr>=6.0
             @printf(io,"%0.7g ± %0.2g",uv.value,uv.sigma)
         elseif lr>=5.0
