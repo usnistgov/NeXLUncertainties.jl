@@ -55,55 +55,6 @@ function checkcovariance!(cov::AbstractMatrix{Float64}, tol = 1.0e-6)::Bool
 end
 
 """
-    checkcovariance!(cov::SparseMatrixCSC{Float64,Int})
-
-Checks whether the sparse matrix meets the criteria for a covariance matrix.
-(Square, non-negative diagonal elements, symmetric cov[r,c]==cov[c,r], and the
-correlation coefficient between -1.0 and 1.0).  The tests are approximate
-to handle rounding errors but when a symmetric pair of values are not precisely
-equal they are set equal and when the correlation coefficient is slightly outside
-[-1,1], it is restricted to within these bounds. Thus the input matrix can be
-modified by this "check" function.
-"""
-function checkcovariance!(cov::SparseMatrixCSC{Float64,Int}, tol = 1.0e-12)::Bool
-    # The generic AbstractMatrix implementation can be really slow on large sparce matrices.
-    sz = size(cov)
-    if length(sz) ≠ 2
-        error("The covariance must be a matrix.")
-    end
-    if sz[1] ≠ sz[2]
-        error("The covariance matrix must be square.")
-    end
-    for rc = 1:sz[1]
-        if cov[rc, rc] < 0.0
-            error("The diagonal elements must all be non-negative. (S) -> ", cov[rc, rc])
-        end
-    end
-    for ci in findall(!iszero, cov)
-        r, c = ci[1], ci[2]
-        if !isapprox(cov[ci], cov[c, r], atol = abs(tol) * sqrt(cov[r, r] * cov[c, c]))
-            error("The variances must be symmetric. (S) -> ", cov[ci], " ≠ ", cov[c, r])
-        end
-        cov[c, r] = cov[ci] # Now force it precisely...
-    end
-    for ci in findall(!iszero, cov)
-        r, c = ci[1], ci[2]
-        cc = cov[ci] / sqrt(cov[r, r] * cov[c, c])
-        if abs(cc) > 1.0 + 1.0e-12
-            error(
-                "The variances must have a correlation coefficient between -1.0 and 1.0 (S) -> ",
-                cc,
-            )
-        end
-        if abs(cc) > 1.0
-            cc = max(-1.0, min(1.0, cc))
-            cov[ci] = (cov[c, r] = cc * sqrt(cov[r, r] * cov[c, c]))
-        end
-    end
-    true
-end
-
-"""
     UncertainValues
 
 Represents a set of related variables with the covariance matrix that represents
