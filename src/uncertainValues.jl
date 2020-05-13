@@ -3,7 +3,6 @@
 using Printf
 using LinearAlgebra
 using DataFrames
-using SparseArrays
 
 """
     checkcovariance!(cov::AbstractMatrix)
