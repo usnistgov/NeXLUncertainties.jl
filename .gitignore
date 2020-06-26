@@ -2,5 +2,8 @@
 *.jl.*.cov
 *.jl.mem
 /docs/build/
+/docs/src/gettingstarted.md
 /docs/Manifest.toml
+/weave/*.html
+/weave/jl_*
 Manifest.toml
