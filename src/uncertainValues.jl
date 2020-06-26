@@ -283,6 +283,23 @@ function Base.show(io::IO, ::MIME"text/html", uvs::UncertainValues)
     print(io,res)
 end
 
+function Base.show(io::IO, ::MIME"text/markdown", uvs::UncertainValues)
+    fmt(x) = @sprintf("%0.2e",x)
+    cv(r, c) = r == c ? "($(fmt(σ(r,uvs))))²" : "$(fmt(covariance(r,c,uvs)))"
+    esc(ss) = replace(ss,"|"=>"\\|")
+    ext(ss,l) = ss*repeat(" ",l-length(ss))
+    lbls, rows = labels(uvs), []
+    push!(rows, [ "Labels","Values","", repr.(lbls)...])
+    for lbl in lbls
+        push!(rows, [ repr(lbl), fmt(value(lbl,uvs))," ", (cv(lbl,col) for col in lbls)...])
+    end
+    cl = maximum(length(rows[j][i]) for j in eachindex(rows) for i in eachindex(rows[j]))
+    insert!(rows, 2, [ ":$(repeat("-",cl-2))-", ":$(repeat("-",cl-2)):",":$(repeat("-",cl-2)):",(":$(repeat("-",cl-2)):" for l in lbls)...])
+    rows[(length(rows)-3)÷2+3][3]=ext("±",cl)
+    ss = join( ("| "*join( (ext(rows[r][c],cl) for c in eachindex(rows[r]))," | ")*" |" for r in eachindex(rows)),"\n")
+    print(io,ss)
+end
+
 """
     sortedlabels(uvs::UncertainValues)
 
