@@ -12,28 +12,25 @@ to retain. `LabeledValues` are O(1) while retaining the order of
 the labels.
 """
 struct LabeledValues
-    forward::Dict{<:Label, Float64}
-    reverse::Dict{<:Label, Int}
-
-    LabeledValues(
-        forward::Dict{<:Label, Float64},
-        reverse::Dict{<:Label, Int}
-    ) = new(forward, reverse)
+    values::Vector{Float64}
+    index::Dict{<:Label, Int}
 
     function LabeledValues(
         labels::AbstractVector{<:Label},
         values::AbstractVector{Float64}
     )
-        forward = Dict{Label,Float64}( labels[i]=>values[i] for i in eachindex(labels))
-        reverse = Dict{Label, Int}( labels[i] => i for i in eachindex(labels))
-        return new(forward, reverse)
+        @assert length(Set(labels)) == length(labels) "The labels are not all unique."
+        index = Dict{Label, Int}( labels[i] => i for i in eachindex(labels))
+        return new(values, index)
     end
 end
 
-Base.show(io::IO, lv::LabeledValues) =
-    print(io,"LabeledValues[\n"*join(("\t"*repr(lbl)*" => "*repr(val) for (lbl, val) in lv.forward), "\n")*"\n]")
+Base.eachindex(lv::LabeledValues) = eachindex(values)
 
-Base.copy(lv::LabeledValues) = LabeledValues(copy(lv.forward), copy(lv.reverse))
+Base.show(io::IO, lv::LabeledValues) =
+    print(io,"LabeledValues[\n"*join(("\t"*repr(lbl)*" => "*repr(lv[lbl]) for lbl in labels(lv)), "\n")*"\n]")
+
+Base.copy(lv::LabeledValues) = LabeledValues(copy(lv.values), copy(lv.index))
 
 Base.merge(lvs::LabeledValues...) =
     LabeledValues(vcat(map(labels, lvs)...), vcat(map(values, lvs)...))
@@ -43,37 +40,25 @@ Base.merge(lvs::LabeledValues...) =
 
 Returns the value associated with the specified `Label`.
 """
-value(lv::LabeledValues, lbl::Label)::Float64 =
-    lv.forward[lbl]
-
-Base.length(lv::LabeledValues) = length(lv.forward)
-
-Base.getindex(lv::LabeledValues, lbl::Label)::Float64 =
-    lv.forward[lbl]
+value(lv::LabeledValues, lbl::Label)::Float64 = lv.values[indexin(lbl, lv)]
+Base.length(lv::LabeledValues) = length(lv.values)
+Base.getindex(lv::LabeledValues, lbl::Label)::Float64 = lv.values[indexin(lbl,lv)]
 
 function Base.setindex!(lv::LabeledValues, val::Real, lbl::Label)
-    @assert !Base.haskey(lv.forward, lbl) "$lbl already exists in LabeledValues - $lv"
-    lv.forward[lbl] = val
-    lv.reverse[lbl] = length(lv.forward)
+    @assert !Base.haskey(lv.index, lbl) "$lbl already exists in LabeledValues - $lv"
+    push!(lv.values,  val)
+    index[lbl] = length(values) + 1
 end
 
 """
-    index(lv::LabeledValues, lbl::Label)::Int
+    indexin(lbl::Label, lv::LabeledValues)::Int
 
 Returns the index associated with the specified `Label`.
 """
-Base.indexin(lbl::Label, lv::LabeledValues)::Int =
-    lv.reverse[lbl]
+Base.indexin(lbl::Label, lv::LabeledValues)::Int = lv.index[lbl]
 
-"""
-    haskey(lv::LabeledValues, lbl::Label)
-
-Is there a value associated with the `Label`?
-"""
-Base.haskey(lv::LabeledValues, lbl::Label) =
-    haskey(lv.forward, lbl)
-
-Base.keys(lv::LabeledValues) = keys(lv.forward)
+Base.haskey(lv::LabeledValues, lbl::Label) = haskey(lv.index, lbl)
+Base.keys(lv::LabeledValues) = keys(lv.index)
 
 """
     labels(lv::LabeledValues)::Vector{Label}
@@ -81,8 +66,8 @@ Base.keys(lv::LabeledValues) = keys(lv.forward)
 A `Vector` of the `Label`s in order.
 """
 function labels(lv::LabeledValues)::Vector{Label}
-    res = Array{Label}(undef, length(lv.reverse))
-    for (lbl, idx) in lv.reverse
+    res = Array{Label}(undef, length(lv.index))
+    for (lbl, idx) in lv.index
         res[idx] = lbl
     end
     return res
@@ -91,16 +76,9 @@ end
 """
     values(lv::LabeledValues)::Vector{Float64}
 
-A `Vector` of the values in order.
+A copy `Vector` of the values in order.
 """
-function Base.values(lv::LabeledValues)::Vector{Float64}
-    res = Array{Float64}(undef, length(lv.reverse))
-    for (lbl, idx) in lv.reverse
-        res[idx] = lv.forward[lbl]
-    end
-    return res
-end
-
+Base.values(lv::LabeledValues)::Vector{Float64} = copy(lv.values)
 
 function asa(::DataFrame, lv::LabeledValues)
     name, value = String[], Float64[]
