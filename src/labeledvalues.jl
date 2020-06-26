@@ -19,9 +19,17 @@ struct LabeledValues
         labels::AbstractVector{<:Label},
         values::AbstractVector{Float64}
     )
-        @assert length(Set(labels)) == length(labels) "The labels are not all unique."
+        @assert length(unique(labels)) == length(labels) "The labels are not all unique."
         index = Dict{Label, Int}( labels[i] => i for i in eachindex(labels))
-        return new(values, index)
+        return new(copy(values), index)
+    end
+    function LabeledValues(
+        labels::NTuple{N, Label},
+        values::NTuple{N, Float64}
+    ) where N <: Any
+        @assert length(unique(labels)) == length(labels) "The labels are not all unique."
+        index = Dict{Label, Int}( labels[i] => i for i in eachindex(labels))
+        return new([values...], index)
     end
 end
 

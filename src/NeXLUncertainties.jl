@@ -52,7 +52,7 @@ export MeasurementModel
 export propagate
 export mcpropagate
 export compute
-export MaintainLabels
+export MaintainInputs
 export AllInputs
 export ParallelMeasurementModel
 export ComposedMeasurementModel

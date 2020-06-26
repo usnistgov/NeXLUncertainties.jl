@@ -13,7 +13,9 @@ let start_dir = pwd()
         mkpath(outpath)
     end
 
-    weaveit.(("gettingstarted.jmd", ))
+    weaveit.(("gettingstarted.jmd", "resistors.jmd"))
+
+    cp("resistor.png",joinpath("../docs/src/resistor.png"))
 
     cd(start_dir)
 end

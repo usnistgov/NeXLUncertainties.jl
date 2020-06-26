@@ -267,21 +267,9 @@ function Base.show(io::IO, ::MIME"text/plain", uvs::UncertainValues)
     end
 end
 
-function Base.show(io::IO, ::MIME"text/html", uvs::UncertainValues)
-    fmt(x) = @sprintf("%0.2e",x)
-    tr(x) = "<tr>$x</tr>"
-    td(x) = "<td>$x</td>"
-    th(x) = "<th>$x</th>"
-    table(x) = "<table>$x</table>"
-    cv(r, c) = r == c ? td("($(fmt(σ(r,uvs))))²") : td("$(fmt(covariance(r,c,uvs)))")
-    lbls = labels(uvs)
-    res = "<table border=1 frame=vsides rules=cols><tr>"
-    res*=td(table(tr(th("Label")*th("Value"))*join(map(l->tr(th(repr(l))*td("$(fmt(value(l,uvs)))")),lbls))))
-    res*=td("&pm;")
-    res*=td(table(tr(join(map(l->th(repr(l)), lbls)))*join(map(lr->tr(join(map(lc->cv(lr,lc), lbls))), lbls))))
-    res*="</tr></table>"
-    print(io,res)
-end
+Base.show(io::IO, m::MIME"text/html", uvs::UncertainValues) =
+    # We piggyback off DataFrames here because generating a good looking table isn't easy...
+    show(io, m, asa(DataFrame, uvs),summary=false, eltypes=false)
 
 function Base.show(io::IO, ::MIME"text/markdown", uvs::UncertainValues)
     fmt(x) = @sprintf("%0.2e",x)

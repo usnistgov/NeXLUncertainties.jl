@@ -180,22 +180,22 @@ compute(mm::MeasurementModel, inputs::LabeledValues)::LabeledValues =
     compute(mm, inputs, false)[1]
 
 """
-    MaintainLabels <: MeasurementModel
+    MaintainInputs <: MeasurementModel
 
 Carry over a subset of the input variables to the next step in a calculation.  Typically
 used in consort with a `ParallelMeasurementModel` when inputs to this step will also
 be required in subsequent steps.
 """
-struct MaintainLabels <: MeasurementModel
+struct MaintainInputs <: MeasurementModel
     labels::Vector{Label}
     all::Bool
 
-    MaintainLabels(labels::AbstractVector{<:Label}, all::Bool=false) = new(labels,all)
-    MaintainLabels(ty, labels, all::Bool=false) = new(labelsByType(ty, labels),all)
-    MaintainLabels(label::Label, all::Bool=false) = new([label],all)
+    MaintainInputs(labels::AbstractVector{<:Label}, all::Bool=false) = new(labels,all)
+    MaintainInputs(ty, labels, all::Bool=false) = new(labelsByType(ty, labels),all)
+    MaintainInputs(label::Label, all::Bool=false) = new([label],all)
 end
 
-function compute(mm::MaintainLabels, inputs::LabeledValues, withJac::Bool)::MMResult
+function compute(mm::MaintainInputs, inputs::LabeledValues, withJac::Bool)::MMResult
     if mm.all
         jac = withJac ? Array{Float64}(I, length(inputs), length(inputs)) : missing
         return (inputs, jac)
@@ -349,11 +349,44 @@ Base.:|(mm1::ParallelMeasurementModel, mm2::ParallelMeasurementModel) =
     ParallelMeasurementModel([mm1.models..., mm2.models...])
 
 Base.:|(mm1::MeasurementModel, mm2::MeasurementModel) =
-    ParallelMeasurementModel([mm1, mm2], false)
+    ParallelMeasurementModel([mm1, mm2], true)
 
 # So missing measurement models compile down to a NoOP
 Base.:|(mm1::MeasurementModel, mm2::Missing) = mm1
 Base.:|(mm1::Missing, mm2::MeasurementModel) = mm2
+
+
+"""
+    (¦)(mm1::MeasurementModel, mm2::MeasurementModel)
+
+Implements a mechanism to combine `MeasurementModel`s that work on the same input to
+produce output that is the combination of the outputs of all the measurement models.  This
+is useful when a calculation forks into 2 or more distinct calculations which are later
+composed as is shown in the examples.
+
+Examples:
+
+    j = f ¦ g # Creates a ParallelMeasurementModel([f,g], true)
+    y = j(x) # where y combines the outputs of f(x) and h(x)
+    z = (f ¦ g ¦ h)(x) # Conceptually like combine(f(x), g(x), h(x)) into a single output
+    (k ∘ (f ¦ g ¦ h))(x) == k(z) # Conceptually like k(f(x),g(x),h(x))
+"""
+Base.:¦(mm1::ParallelMeasurementModel, mm2::MeasurementModel) =
+    ParallelMeasurementModel([mm1.models..., mm2] )
+
+Base.:¦(mm1::MeasurementModel, mm2::ParallelMeasurementModel) =
+    ParallelMeasurementModel([mm1, mm2.models...])
+
+Base.:¦(mm1::ParallelMeasurementModel, mm2::ParallelMeasurementModel) =
+    ParallelMeasurementModel([mm1.models..., mm2.models...])
+
+Base.:¦(mm1::MeasurementModel, mm2::MeasurementModel) =
+    ParallelMeasurementModel([mm1, mm2], false)
+
+# So missing measurement models compile down to a NoOP
+Base.:¦(mm1::MeasurementModel, mm2::Missing) = mm1
+Base.:¦(mm1::Missing, mm2::MeasurementModel) = mm2
+
 
 
 """

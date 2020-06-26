@@ -1,0 +1,140 @@
+## A (Relatively) Simple Example
+
+#### The Uncertainty in a Resistor Network
+
+Let's imaging that we have a resistor network that looks like this:
+
+![Resistor Network](resistor.png)
+
+Let's assume that each resistor is known with ± 5% accuracy.  What is the
+effective resistance of the network and the associated uncertainty?
+
+```julia
+using NeXLUncertainties
+```
+
+First let's define a label to help us uniquely identify the resistors.  The
+integer indices will be those in the blue (input) and peach (intermediate)
+boxes on the diagram above.
+
+```julia
+struct Resistor <: Label
+    index::Integer
+end
+
+Base.show(io::IO, r::Resistor) = print(io, "R$(r.index)")
+```
+
+First, let's design the measurement model for the resistors in series.
+The resistance is just the sum of the resistors involved and the derivative
+is unity for these resistors and zero for the other resistors.
+```julia
+struct Series <: MeasurementModel
+    resistors::Vector{Resistor}
+    outindex::Int
+end
+
+Base.show(io::IO, ss::Series) = print(io,"Rmodel[$(ss.outindex)]")
+
+function NeXLUncertainties.compute(ss::Series, inputs::LabeledValues, withJac::Bool=false)
+    resistance = sum(inputs[r] for r in ss.resistors)
+    vals = LabeledValues( (Resistor(ss.outindex ), ), ( resistance, ) )
+    if withJac
+        jac= zeros(1, length(inputs))
+        for r in ss.resistors
+            jac[1, indexin(r, inputs)] = 1.0
+        end
+    else
+        jac = nothing
+    end
+    return (vals, jac)
+end
+```
+Then the model for the resistors in parallel.  The resistance is the reciprocal
+of the sum of reciprocals of the resistors involved.
+```julia
+
+struct Parallel <: MeasurementModel
+    resistors::Vector{Resistor}
+    outindex::Integer
+end
+
+Base.show(io::IO, ss::Series) = print(io,"Rmodel[$(ss.outindex)]")
+
+function NeXLUncertainties.compute(ss::Parallel, inputs::LabeledValues, withJac::Bool=false)
+    resistance = 1.0/sum(1.0/inputs[r] for r in ss.resistors)
+    vals = LabeledValues( (Resistor(ss.outindex ), ), ( resistance, ) )
+    if withJac
+        jac = zeros(1, length(inputs))
+        for r in ss.resistors
+            jac[1, indexin(r,inputs)] = (resistance/inputs[r])^2
+        end
+    end
+    return (vals, jac)
+end
+```
+We'll define the input resistors' properties.
+```julia
+# Define the inital resistors
+resistor = Resistor.(1:7)
+resistance = [ 8.0, 2.0, 10.0, 1.0, 4.0, 12.0, 1.0 ]
+dresistance = (0.05*resistance).^2
+inputs = uvs(resistor,resistance,dresistance)
+```
+
+Then we will define a model to descibe each step in the network resistor. In
+each step, I've defined the model as the Series or Parallel combination of the
+resistors plus `AllInputs() |` to pass the input variables from this step onto
+the next. (Putting `AllInputs()` up front maintains the ordering of variables.)
+```julia
+r8 = AllInputs() | Series([resistor[1], resistor[2]], 8)
+r9 = AllInputs() | Parallel([Resistor(8), resistor[3]], 9)
+r10 = AllInputs() | Series([resistor[4], Resistor(9)], 10)
+r11 = AllInputs() | Parallel([resistor[5], resistor[6], Resistor(10)], 11)
+r12 = AllInputs() | Series([resistor[7], Resistor(11)], 12);
+```
+
+Finally, we pull together the steps into the overall model using the `∘` or
+compose operator.
+```julia
+model = r12 ∘ r11 ∘ r10 ∘ r9 ∘ r8
+res = model(inputs)
+```
+
+To access the single uncertain value associated with the result:
+```julia
+res[Resistor(12)]
+```
+
+You might have noticed that this example is actually a univariate measurement
+model.  There is a simpler way to handle this model using the `Measurements` package.
+
+First let's define our model equations and check that they produce the same number as above.
+```julia
+pp(a,b) = 1.0/(1.0/a+1.0/b)
+pp(a,b,c) = 1.0/(1.0/a+1.0/b+1.0/c)
+ss(a,b) = a + b
+
+ss(1.0,pp(12.0,4.0,ss(1.0,pp(10.0,ss(2.0,8.0)))))
+```
+Yes, they do.  Now let's use `Measurements` to perform the same calculation.
+We'll define the resistances with uncertainties using `Measurements` simplified
+syntax and then we will use the same functions we just used above to compute
+the model using the values with uncertainties.
+```julia
+using Measurements
+
+r1 = 8.0 ± 0.4
+r2 = 2.0 ± 0.1
+r3 = 10.0 ± 0.5
+r4 = 1.0 ± 0.05
+r5 = 4.0 ± 0.2
+r6 = 12.0 ± 0.6
+r7 = 1.0 ± 0.05
+
+ss(r7,pp(r6,r5,ss(r4,pp(r3,ss(r2,r1)))))
+```
+
+We do, in fact, get the same result.
+Take away - For univariate measurement models `Measurements` is easier.  For
+multivariate measurement models, `NeXLUncertainies` is necessary.

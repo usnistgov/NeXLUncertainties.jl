@@ -86,27 +86,29 @@ output variables `nl"D"`, `nl"E"`, `nl"F"` and `nl"G"`. (`nl"A"` is equivalent t
 `label("A")`).
 
 ```julia
+timeme=true
 using NeXLUncertainties
+using BenchmarkTools
 
-# Define our model
+# Give our model a name and option parameters or flavor
 struct TestMeasurementModel <: MeasurementModel
-    k::Float64  # Some useful value passed in but associated with an uncertainty
+    k::Float64  # Some useful value passed in but without an associated uncertainty
 end
 
-d(a, b, c) = a + b^2 + c^3
-e(a, b, c) = log(a) + exp(c)
-f(a, b, c) = 3.2 * a * b * c
-g(a, b, c, k) = k * a * b + 1.8 * a * c
+dd(a, b, c) = a + b^2 + c^3
+ee(a, b, c) = log(a) + exp(c)
+ff(a, b, c) = 3.2 * a * b * c
+gg(a, b, c, k) = k * a * b + 1.8 * a * c
 
 function NeXLUncertainties.compute(mm::TestMeasurementModel, inputs::LabeledValues, withJac::Bool=false)::MMResult
     # Build labels to identify the input variables.
-    la, lb, lc = label.([ "A", "B", "C"])
+    la, lb, lc = label.(( "A", "B", "C"))
     # Pluck the value associated with these labels from `inputs`
     a, b, c = inputs[la], inputs[lb], inputs[lc]
     # Build labels to identify the output values
-    outlabels = label.([ "D", "E", "F", "G" ])
+    outlabels = label.(( "D", "E", "F", "G" ))
     # Calculate the output values
-    results = [d(a, b, c), e(a, b, c), f(a, b, c), g(a, b, c, mm.k)]
+    results = ( dd(a, b, c), ee(a, b, c), ff(a, b, c), gg(a, b, c, mm.k) )
     # Build the `LabeledValues` to represent the result values
     outputs = LabeledValues(outlabels, results)
     # Note: The order of the label in the constructor decides their index
@@ -119,7 +121,7 @@ function NeXLUncertainties.compute(mm::TestMeasurementModel, inputs::LabeledValu
         jac[indexin(label("E"),outputs), indexin(la, inputs)] = 1/a # D[log(a)+exp(c), a]
         jac[indexin(label("F"),outputs), indexin(la, inputs)] = 3.2*b*c # D[3.2*a*b*c, a]
         jac[indexin(label("G"),outputs), indexin(la, inputs)] = mm.k * b + 1.8 * c # D[mm.k * a * b + 1.8 * a * c, a]
-        # Or relying on the order implied by the labels `outputs`
+        # Or relying on the order implied by `outlabels` used to construct `outputs`
         jac[:, indexin(lb, inputs)] .= ( 2.0 * b, 0, results[3] / b, mm.k * a )
         jac[:, indexin(lc, inputs)] .= ( 3.0 * c^2, exp(c), results[3] / c, 1.8 * a )
     else
@@ -129,13 +131,13 @@ function NeXLUncertainties.compute(mm::TestMeasurementModel, inputs::LabeledValu
 end
 ```
 That's it.  We can control the order of the output variables (within the `compute`
-function), however, in general, we can't control the order of the input variables
+function). However, in general, we can't control the order of the input variables
 so we do need to use the `indexin(...)` function to find the index of the input
 variables so that we place the Jacobian elements in the correct columns.
 
 To perform the calculation, we don't use `compute(...)` directly.  Instead,
-we'll use either `propagate(...)` or `(::MeasurementModel)(...)` notation.
-The input for these methods is an `UncertainValues` object.
+we'll use the `(::MeasurementModel)(...)` notation. The input for these methods
+is an `UncertainValues` object.
 
 Let's construct an `UncertainValues` object.
 ```julia
@@ -150,13 +152,15 @@ covars = [
     cab * da * db        db^2           cbc * db * dc
     cac * da * dc   cbc * db * dc           dc^2
 ]
+# Construct the UncertainValues object
 inputs = uvs(labels, values, covars)
 ```
 Now construct and apply the model using function-like syntax.
 ```julia
-using BenchmarkTools
 model = TestMeasurementModel(2.3)
-# @btime model(inputs)
+if timeme
+    @btime model(inputs)
+end
 result = model(inputs)
 ```
 As we expect, the outputs are `nl"D"` to `nl"F"` as an `UncertainValues` object.
@@ -168,8 +172,9 @@ defined above and apply the model using function-like syntax.
 
 ```julia
 inputs = LabeledValues(labels, values)
-model = TestMeasurementModel(2.3)
-#@btime model(inputs)
+if timeme
+    @btime model(inputs)
+end
 result = model(inputs)
 ```
 You might have noticed the `withJac=false` argument to the `compute(...)` function.
@@ -177,15 +182,17 @@ It serves to short-circuit the computation of the Jacobian when it isn't necessa
 A beauty of Julia is that by defining it with a default argument, the code
 compiles into two functions - one that computes the Jacobian and the other that
 doesn't.  Thus the simple evaluation of values (as immediately above) uses
-a function that doesn't even consider constucting the Jacobian and so is very
-fast.
+a function that doesn't even consider constucting the Jacobian and so is lean
+and fast.
 
-This efficiency is important when we want to use the same function in a Monte
+This efficiency is important when we want to use the same function for a Monte
 Carlo propagation.
 ```julia
 inputs = uvs(labels, values, covars)
-#@btime mcpropagate(model, inputs, 10000, parallel = false)
-#@btime mcpropagate(model, inputs, 10000, parallel = true)
+if timeme
+    @btime mcpropagate(model, inputs, 10000, parallel = false)
+    @btime mcpropagate(model, inputs, 10000, parallel = true)
+end
 mcres = mcpropagate(model, inputs, 10000, parallel = false)
 ```
 Due to the stochastic nature of the evaluation, the values and the covariance matrix

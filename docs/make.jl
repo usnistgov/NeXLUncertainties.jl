@@ -7,9 +7,11 @@ include("../weave/buildweave.jl")
 makedocs(
     modules = [NeXLUncertainties],
     sitename = "NeXLUncertainties.jl",
-    pages = [ "Home" => "index.md", "Getting Started" => "gettingstarted.md", "Methods" => "methods.md" ]
+    pages = [ "Home" => "index.md", "Getting Started" => "gettingstarted.md", "Resistor Network Example"=>"resistors.md", "Methods" => "methods.md" ]
 )
 
 rm("src/gettingstarted.md", force=true)
+rm("src/resistors.md", force=true)
+rm("src/resistor.png", force=true)
 
 # deploydocs(repo = "github.com/NeXLUncertainties.jl.git")
