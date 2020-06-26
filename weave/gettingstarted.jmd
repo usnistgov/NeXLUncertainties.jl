@@ -1,0 +1,208 @@
+## Getting Started with NeXLUncertainies.jl
+
+Uncertainty calculations can separated into univariate and multivariate cases
+depending upon the number of **output** quantities.  The univariate case is
+often handled using the strategies described in *[JCGM GUM 100 - Guide to the
+Expression of Uncertainty in Measurement](https://www.bipm.org/en/publications/guides/gum.html)*
+and presented in many an undergraduate science class.  This technique can
+track uncertainties in multiple input quantities into the output value.  This
+strategy is well implemented in the
+[Measurements.jl](https://github.com/JuliaPhysics/Measurements.jl) package.
+
+However, if your problem involves multiple outputs from one or more inputs,
+there will be correlations in the outputs that aren't handled in the univariate
+case.  X-ray microanalysis is an example of such a measurement model.  The
+inputs are k-ratios, ratios of X-ray intensity measured on a known and unknown
+material.  The outputs are the mass fractions of each element.  You can't measure
+one element at a time.  You must measured them all because the k-ratio for element
+A is a function of all the other elements in the material due to "matrix effects".
+So the mass fraction of element $C_i$ is actually a function of all the $k$s.
+
+The multivariate case can be handled using strategies in [JCGM GUM 101 - Evaluation of measurement
+data — Supplement 1 to the “Guide to the expression of uncertainty in measurement”
+— Propagation of distributions using a Monte Carlo method]
+(https://www.bipm.org/utils/common/documents/jcgm/JCGM_101_2008_E.pdf) or
+[JCGM GUM 102 - Evaluation of measurement data – Supplement 2 to the "Guide to the expression
+of uncertainty in measurement" – Extension to any number of output quantities]
+(https://www.bipm.org/utils/common/documents/jcgm/JCGM_102_2011_E.pdf).
+
+There isn't another library to handle the multivariate case, so this is it.
+
+This library defines two structures to hold quantities with associated uncertainties.
+A single value with an associate uncertainty is represented by an
+`UncertainValue`.  Multiple values, their uncertainties and the correlations
+between the values are represented by an `UncertainValues` (plural) structure.
+Internally, an `UncertainValues` object is represented by a `Vector{Float64}`
+and the covariance matrix by a `Matrix{Float64}`.
+
+Often, the inputs to a calculation are represented by `UncertainValue` objects,
+while the calculation is progressing the values are tracked using `UncertainValues`
+objects and at the end of the calculation, the result is best expressed as
+an `UncertainValues` object but may be flattened to a set of `UncertainValue`
+objects because this is what people feel comfortable with.  If subsequent
+calculations are to be performed, the result should definitely be maintained
+as an `UncertainValues` objects so as not to lose information about the
+correlations between the output parameters.
+
+This library then implements methods to propagate uncertainties from input
+values to the output values using either the Monte Carlo strategy in GUM 101
+or the first-order Taylor series approximation strategy in GUM 102.  They are
+complementary.  The Monte Carlo strategy is usually easier to implement and
+can handle variables with arbitrary input distributions.  The
+Taylor series approach requires analytical partial derivatives (or numerical
+approximations) but is typically much faster and allows contributions to be
+tracked from input values to output values.  The library makes it easy to
+compare results from the Monte Carlo and Taylor series approaches.  They don't
+always agree (for various reasons) but they often do.  When they don't agree it
+suggests that maybe the first-order Taylor series approximation is insufficient.
+
+The identity of input and output values must be rigorously tracked.  Input
+values must be entered once and only once.  Intermediate values must be computed
+once and only once.  While it might be possible to use `Symbol` objects for
+simple models, more complex models may require a more sophisticated mechanism
+to label quantities.  For this purpose, a `Label` abstract class has been
+constructed with a `BasicLabel` implementation to handle simple labels and an
+`nl"???"` macro to create a string-based label.
+
+A collection of `Label` structures and the associated `Float64` values can
+be collected in a `LabeledValues` structure.  This structure provides a mechanism
+for mapping between `Label`, integer row/column index (in the covariance matrix)
+and the value.
+
+To propagate values, you'll need to implement the abstract type `MeasurementModel`
+and a single method `compute(mm::MeasurementModel, inputs::LabeledValues, withJac::Bool)::MMResult`,
+which returns `MMResult = Tuple{LabeledValues, Union{Missing,AbstractMatrix{Float64}}}`.
+
+`compute(...)` is responsible for calculating two distinct objects.  The first
+item is the output `LabeledValues` structure and the second is a Jacobian matrix.
+The `LabeledValues` are the result values from the model and the Jacobian is a
+matrix of partial derivatives of the output quantities relative
+to the input quantities. The rows are labeled by the indices in the
+`inputs` variable and the columns are labeled by the result `LabeledValues`.
+
+
+Let's consider an model with input variables `nl"A"`, `nl"B"`, and `nl"C"` and
+output variables `nl"D"`, `nl"E"`, `nl"F"` and `nl"G"`. (`nl"A"` is equivalent to
+`label("A")`).
+
+```julia
+using NeXLUncertainties
+
+# Define our model
+struct TestMeasurementModel <: MeasurementModel
+    k::Float64  # Some useful value passed in but associated with an uncertainty
+end
+
+d(a, b, c) = a + b^2 + c^3
+e(a, b, c) = log(a) + exp(c)
+f(a, b, c) = 3.2 * a * b * c
+g(a, b, c, k) = k * a * b + 1.8 * a * c
+
+function NeXLUncertainties.compute(mm::TestMeasurementModel, inputs::LabeledValues, withJac::Bool=false)::MMResult
+    # Build labels to identify the input variables.
+    la, lb, lc = label.([ "A", "B", "C"])
+    # Pluck the value associated with these labels from `inputs`
+    a, b, c = inputs[la], inputs[lb], inputs[lc]
+    # Build labels to identify the output values
+    outlabels = label.([ "D", "E", "F", "G" ])
+    # Calculate the output values
+    results = [d(a, b, c), e(a, b, c), f(a, b, c), g(a, b, c, mm.k)]
+    # Build the `LabeledValues` to represent the result values
+    outputs = LabeledValues(outlabels, results)
+    # Note: The order of the label in the constructor decides their index
+    @assert all(indexin(outlabels[i],outputs)==i for i in eachindex(outlabels))
+    if withJac # Only compute the Jacobian if `withJac=true`
+        # Compute the Jacobian column-by-column (input-by-input)
+        jac = zeros(length(outputs), length(inputs))
+        # Being very explicit...
+        jac[indexin(label("D"),outputs), indexin(la, inputs)] = 1 # D[a+b^2+c^3,a]
+        jac[indexin(label("E"),outputs), indexin(la, inputs)] = 1/a # D[log(a)+exp(c), a]
+        jac[indexin(label("F"),outputs), indexin(la, inputs)] = 3.2*b*c # D[3.2*a*b*c, a]
+        jac[indexin(label("G"),outputs), indexin(la, inputs)] = mm.k * b + 1.8 * c # D[mm.k * a * b + 1.8 * a * c, a]
+        # Or relying on the order implied by the labels `outputs`
+        jac[:, indexin(lb, inputs)] .= ( 2.0 * b, 0, results[3] / b, mm.k * a )
+        jac[:, indexin(lc, inputs)] .= ( 3.0 * c^2, exp(c), results[3] / c, 1.8 * a )
+    else
+        jac = missing
+    end
+    return (outputs, jac)
+end
+```
+That's it.  We can control the order of the output variables (within the `compute`
+function), however, in general, we can't control the order of the input variables
+so we do need to use the `indexin(...)` function to find the index of the input
+variables so that we place the Jacobian elements in the correct columns.
+
+To perform the calculation, we don't use `compute(...)` directly.  Instead,
+we'll use either `propagate(...)` or `(::MeasurementModel)(...)` notation.
+The input for these methods is an `UncertainValues` object.
+
+Let's construct an `UncertainValues` object.
+```julia
+labels = [label("A"), label("B"), label("C")]
+a, b, c = 2.0, π / 8, -1.0  # values
+da, db, dc = 0.1, π / 40, 0.05 # uncertainties
+cab, cac, cbc = -0.3, 0.8, 0.1 # correlation coefficients
+
+values = [a, b, c]
+covars = [
+    da^2            cab * da * db       cac * da * dc
+    cab * da * db        db^2           cbc * db * dc
+    cac * da * dc   cbc * db * dc           dc^2
+]
+inputs = uvs(labels, values, covars)
+```
+Now construct and apply the model using function-like syntax.
+```julia
+using BenchmarkTools
+model = TestMeasurementModel(2.3)
+# @btime model(inputs)
+result = model(inputs)
+```
+As we expect, the outputs are `nl"D"` to `nl"F"` as an `UncertainValues` object.
+
+Now imagine that you don't want to perform the full uncertainty calculation
+but just want to evaluate the model as though it were a regular function. This
+time construct a `LabeledValues` structure with the labels and values we
+defined above and apply the model using function-like syntax.
+
+```julia
+inputs = LabeledValues(labels, values)
+model = TestMeasurementModel(2.3)
+#@btime model(inputs)
+result = model(inputs)
+```
+You might have noticed the `withJac=false` argument to the `compute(...)` function.
+It serves to short-circuit the computation of the Jacobian when it isn't necessary.
+A beauty of Julia is that by defining it with a default argument, the code
+compiles into two functions - one that computes the Jacobian and the other that
+doesn't.  Thus the simple evaluation of values (as immediately above) uses
+a function that doesn't even consider constucting the Jacobian and so is very
+fast.
+
+This efficiency is important when we want to use the same function in a Monte
+Carlo propagation.
+```julia
+inputs = uvs(labels, values, covars)
+#@btime mcpropagate(model, inputs, 10000, parallel = false)
+#@btime mcpropagate(model, inputs, 10000, parallel = true)
+mcres = mcpropagate(model, inputs, 10000, parallel = false)
+```
+Due to the stochastic nature of the evaluation, the values and the covariance matrix
+are not precisely the same as the analytical evaluation but they are close.  As
+we like to say, "good enough for government work."
+
+This is enough for a "Getting Started Page" but if you remain interested, there
+are more topics to cover.  An important one is propagating errors for measurement
+models that are too complex to compute in a single step.  If the model can
+be broken into sequential steps - `step1`, `step2`, `step3` - it is possible to compose the
+steps to get the equivalent of `step3(step2(step1(inputs)))` using the
+compose operator `∘` as `(step3∘step2∘step1)(inputs)`. If it is possible to
+calculate the Jacobian for each step, it is possible to perform the propagation
+even if the Jacobian of the full calculation is too complex to compute directly.
+
+Along the way, you may have noticed that error propagation in multivariate
+models is actually no more difficult than propagation in univariate models.
+This is particularly true if you attempt to apply the classic Freshman
+science rule (like [these](https://en.wikipedia.org/wiki/Propagation_of_uncertainty#Example_formulae))
+which only serve to give error propagation a bad name.
