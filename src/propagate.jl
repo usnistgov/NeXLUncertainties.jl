@@ -90,7 +90,7 @@ function (mm::MeasurementModel)(inputs::Dict{<:Label, UncertainValue})::Uncertai
 end
 
 function (mm::MeasurementModel)(inputs::LabeledValues)::LabeledValues
-    return compute(mm,inputs)
+    return compute(mm,inputs)[1]
 end
 
 
