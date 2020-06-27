@@ -55,6 +55,7 @@ export compute
 export MaintainInputs
 export AllInputs
 export ParallelMeasurementModel
+export parallel
 export ComposedMeasurementModel
 export MMResult
 end

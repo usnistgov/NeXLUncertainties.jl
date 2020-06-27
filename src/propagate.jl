@@ -247,7 +247,8 @@ struct ParallelMeasurementModel <: MeasurementModel
     models::Vector{MeasurementModel}
     multi::Bool
 
-    ParallelMeasurementModel(models::AbstractVector{<:MeasurementModel}, multithread = false) = new(models, multithread)
+    ParallelMeasurementModel(models::AbstractVector{<:MeasurementModel}, multithread = false) =
+        new(models, multithread)
 end
 
 function compute(mm::ParallelMeasurementModel, inputs::LabeledValues, withJac::Bool)::MMResult
@@ -357,7 +358,7 @@ Base.:|(mm1::Missing, mm2::MeasurementModel) = mm2
 
 
 """
-    (¦)(mm1::MeasurementModel, mm2::MeasurementModel)
+    parallel(mm1::MeasurementModel, models::MeasurementModel...)
 
 Implements a mechanism to combine `MeasurementModel`s that work on the same input to
 produce output that is the combination of the outputs of all the measurement models.  This
@@ -366,28 +367,13 @@ composed as is shown in the examples.
 
 Examples:
 
-    j = f ¦ g # Creates a ParallelMeasurementModel([f,g], true)
+    j = parallel(f,g) # Creates a ParallelMeasurementModel([f,g], true)
     y = j(x) # where y combines the outputs of f(x) and h(x)
-    z = (f ¦ g ¦ h)(x) # Conceptually like combine(f(x), g(x), h(x)) into a single output
-    (k ∘ (f ¦ g ¦ h))(x) == k(z) # Conceptually like k(f(x),g(x),h(x))
+    z = parallel(f, g, h)(x) # Conceptually like combine(f(x), g(x), h(x)) into a single output
+    (k ∘ parallel(f, g, h))(x) == k(z) # Conceptually like k(f(x),g(x),h(x))
 """
-Base.:¦(mm1::ParallelMeasurementModel, mm2::MeasurementModel) =
-    ParallelMeasurementModel([mm1.models..., mm2] )
-
-Base.:¦(mm1::MeasurementModel, mm2::ParallelMeasurementModel) =
-    ParallelMeasurementModel([mm1, mm2.models...])
-
-Base.:¦(mm1::ParallelMeasurementModel, mm2::ParallelMeasurementModel) =
-    ParallelMeasurementModel([mm1.models..., mm2.models...])
-
-Base.:¦(mm1::MeasurementModel, mm2::MeasurementModel) =
-    ParallelMeasurementModel([mm1, mm2], false)
-
-# So missing measurement models compile down to a NoOP
-Base.:¦(mm1::MeasurementModel, mm2::Missing) = mm1
-Base.:¦(mm1::Missing, mm2::MeasurementModel) = mm2
-
-
+parallel(mm1::MeasurementModel, models::MeasurementModel...) =
+    ParallelMeasurementModel([mm1, models...])
 
 """
     filter(labels::AbstractVector{<:Label}, mmr::MMResult)::MMResult
