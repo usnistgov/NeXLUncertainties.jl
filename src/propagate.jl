@@ -85,13 +85,8 @@ function (mm::MeasurementModel)(inputs::UncertainValues)::UncertainValues
 end
 
 # Allows measurement models to be used like functions
-function (mm::MeasurementModel)(inputs::Dict{<:Label, UncertainValue})::UncertainValues
-    return propagate(mm, uvs(inputs))
-end
-
-function (mm::MeasurementModel)(inputs::LabeledValues)::LabeledValues
-    return compute(mm,inputs)[1]
-end
+(mm::MeasurementModel)(inputs::Dict{<:Label, UncertainValue})::UncertainValues = propagate(mm, uvs(inputs))
+(mm::MeasurementModel)(inputs::LabeledValues)::LabeledValues = compute(mm, inputs, false)[1]
 
 
 
@@ -327,6 +322,7 @@ Base.:∘(mm1::Missing, mm2::MeasurementModel) = mm2
 
 """
     (|)(mm1::MeasurementModel, mm2::MeasurementModel)
+    (^)(mm1::MeasurementModel, mm2::MeasurementModel)
 
 Implements a mechanism to combine `MeasurementModel`s that work on the same input to
 produce output that is the combination of the outputs of all the measurement models.  This
@@ -336,8 +332,10 @@ composed as is shown in the examples.
 Examples:
 
     j = f | g # Creates a ParallelMeasurementModel([f,g], false)
+    jp = f ^ g # Creates a ParallelMeasurementModel([f,g], true)
     y = j(x) # where y combines the outputs of f(x) and h(x)
     z = (f | g | h)(x) # Conceptually like combine(f(x), g(x), h(x)) into a single output
+    zp = (f ^ g ^ h)(x) # ParallelMeasurementModel([f,g,h], true)  Conceptually like combine(f(x), g(x), h(x)) into a single output
     (k ∘ (f | g | h))(x) == k(z) # Conceptually like k(f(x),g(x),h(x))
 """
 Base.:|(mm1::ParallelMeasurementModel, mm2::MeasurementModel) =
@@ -350,12 +348,28 @@ Base.:|(mm1::ParallelMeasurementModel, mm2::ParallelMeasurementModel) =
     ParallelMeasurementModel([mm1.models..., mm2.models...])
 
 Base.:|(mm1::MeasurementModel, mm2::MeasurementModel) =
-    ParallelMeasurementModel([mm1, mm2], true)
+    ParallelMeasurementModel([mm1, mm2])
 
 # So missing measurement models compile down to a NoOP
 Base.:|(mm1::MeasurementModel, mm2::Missing) = mm1
 Base.:|(mm1::Missing, mm2::MeasurementModel) = mm2
 
+
+Base.:^(mm1::ParallelMeasurementModel, mm2::MeasurementModel) =
+    ParallelMeasurementModel([mm1.models..., mm2], true)
+
+Base.:^(mm1::MeasurementModel, mm2::ParallelMeasurementModel) =
+    ParallelMeasurementModel([mm1, mm2.models...], true)
+
+Base.:^(mm1::ParallelMeasurementModel, mm2::ParallelMeasurementModel) =
+    ParallelMeasurementModel([mm1.models..., mm2.models...], true)
+
+Base.:^(mm1::MeasurementModel, mm2::MeasurementModel) =
+    ParallelMeasurementModel([mm1, mm2], true)
+
+# So missing measurement models compile down to a NoOP
+Base.:^(mm1::MeasurementModel, mm2::Missing) = mm1
+Base.:^(mm1::Missing, mm2::MeasurementModel) = mm2
 
 """
     parallel(mm1::MeasurementModel, models::MeasurementModel...)

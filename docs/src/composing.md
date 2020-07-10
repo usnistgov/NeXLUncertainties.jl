@@ -50,7 +50,7 @@ models using the "compose operator" ∘ - `MM1to3 = MM3 ∘ MM2 ∘ MM1`.
 `MM1to3(X)` is conceptually equivalent to `MM3(MM2(MM1(X)))`. (The ∘
 operator is syntactic sugar for the `ComposedMeasurementModel` type.)
 
-Like we did on the [Getting Started](gettingstarted.html) page, it is
+Like we did on the [Getting Started](gettingstarted/index.html) page, it is
 possible to apply the composed `MeasurementModel` `MM1to3` to either input
 represented by an `UncertainValues` object (the full uncertainty calculation)
 or a `LabeledValues` object (just the function evaluation). The computational
@@ -63,7 +63,7 @@ function with derivative of unity.  Since this is common, there is a special
 mechanism to handle this using the `MaintainInputs` or `AllInputs`
 `MeasurementModel`s combined with the next concept - parallel steps.
 
-See [this page](resistors.html) for an example of a simplish multi-step computation.
+See the "Resistor Network Example" for a (somewhat) simple multi-step computation.
 
 #### Parallel Steps
 
@@ -76,20 +76,15 @@ that computes the MAC for a single X-ray line.  You could apply the model
 sequentially as described in "sequential steps".  However, it would often be
 more efficient to compute the MACs in parallel as a single step.
 
-There is a syntax for that using the "¦" operator which for this purpose I'll
-call the "parallel operator".  If we have X-rays represented by `x1`, `x2` and
-`x3` then we could create a single step `x123 = x1 ¦ x2 ¦ x3`
-
-
 There are two operators to handle steps that can be calculated in parallel
-and combined to look like a single step = "¦" and "|".  The first of these,
-\\brokenbar or "¦", uses `@threads` to parallelize the calculation. The second
+and combined to look like a single step = "^" and "|".  The first of these,
+"^", uses `@threads` to parallelize the calculation. The second
 performs the calculation sequentially.  If the calculation is simple and quick
-use "|".  If the calculation is longer and more complex, "¦" *may* be faster
+use "|".  If the calculation is longer and more complex, "^" *may* be faster
 depending upon the relative cost of the calculation and the cost of spinning
-up multiple threads.  "|" and "¦" are syntactic sugar for the
+up multiple threads.  "|" and "^" are syntactic sugar for the
 "ParallelMeasurementModel" type.
 
-There is a second use for the "|" and "¦" operators (or the
+There is a second use for the "|" and "^" operators (or the
 `ParallelMeasurementModel` type) is to pass variables unmodified from one step
 to the next using the `MaintainInputs` and `AllInputs` `MeasurementModel` types.

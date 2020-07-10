@@ -31,6 +31,11 @@ struct LabeledValues
         index = Dict{Label, Int}( labels[i] => i for i in eachindex(labels))
         return new([values...], index)
     end
+    function LabeledValues(prs::Pair{<:Label,Float64}...)
+        labels = [ pr.first for pr in prs ]
+        values = [ pr.second for pr in prs ]
+        return LabeledValues(labels, values)
+    end
 end
 
 Base.eachindex(lv::LabeledValues) = eachindex(values)

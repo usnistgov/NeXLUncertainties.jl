@@ -1,5 +1,8 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Measurements = "eff96d63-e80a-5855-80a2-b1b0885c5ab7"
+Weave = "44d3d7a6-8a23-5bf8-98c5-b353f8df5ec9"
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 
 [compat]
 Documenter = "0.23"

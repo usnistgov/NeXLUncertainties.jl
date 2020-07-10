@@ -14,8 +14,8 @@ let start_dir = pwd()
     end
 
     weaveit.(("gettingstarted.jmd", "resistors.jmd"))
-
-    cp("resistor.png",joinpath("../docs/src/resistor.png"))
-
+    if !isfile(joinpath(outpath,"resistor.png"))
+        cp("resistor.png",joinpath(outpath,"resistor.png"))
+    end
     cd(start_dir)
 end

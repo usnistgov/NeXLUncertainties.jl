@@ -56,11 +56,11 @@ using Random
     @test value(res[lf]) == resc[lf]
     @test value(res[lg]) == resc[lg]
 
-    println(res)
-    println("D=$(d(a,b,c)) E=$(e(a,b,c)) F=$(f(a,b,c)) G=$(g(a,b,c))")
+    #println(res)
+    #println("D=$(d(a,b,c)) E=$(e(a,b,c)) F=$(f(a,b,c)) G=$(g(a,b,c))")
 
     mcres = NeXLUncertainties.mcpropagate(TestMeasurementModel(), inputs, 100000, rng = MersenneTwister(0xFEED))
-    println(mcres)
+    #println(mcres)
     # Check if the analytical and Monte Carlo agree?
     @test isapprox(value(mcres[ld]), value(res[ld]), atol = 0.05 * σ(res[ld]))
     @test isapprox(value(mcres[le]), value(res[le]), atol = 0.05 * σ(res[le]))
@@ -173,9 +173,18 @@ end;
     resmc = mcpropagate(TotalModel("K-L3"), inputs, 1000)
 
     lbl = nl"k[K-L3]"
-    println("res   = ", value(res[lbl]), " ± ", σ(res[lbl]))
-    println("resmc = ", value(resmc[lbl]), " ± ", σ(resmc[lbl]))
+    @test isapprox(value(res[lbl]), 10.8994931770182, atol=1.0e-12) # As calculated in a spreadsheet
+    @test isapprox(value(res[lbl]), value(resmc[lbl]), atol = 0.1)
+    @test isapprox(σ(res[lbl]), σ(resmc[lbl]), atol = 0.1)
 
+    # Test the parallel version
+    ICharModelP(id::String) = IChar(id) ∘ (NormI("low", id) ^ NormI("peak", id) ^ NormI("high", id) ^ norm2char(id))
+    TotalModelP(id::String) = (KRatioModel(id) ^ retain) ∘ (ICharModelP("std") ^ ICharModelP("unk") | retain)
+
+    res = TotalModelP("K-L3")(inputs)
+    resmc = mcpropagate(TotalModelP("K-L3"), inputs, 1000)
+
+    lbl = nl"k[K-L3]"
     @test isapprox(value(res[lbl]), 10.8994931770182, atol=1.0e-12) # As calculated in a spreadsheet
     @test isapprox(value(res[lbl]), value(resmc[lbl]), atol = 0.1)
     @test isapprox(σ(res[lbl]), σ(resmc[lbl]), atol = 0.1)
