@@ -1,5 +1,14 @@
 # NeXLUncertainties
-![Build Badge](https://travis-ci.com/usnistgov/NeXLUncertainties.jl.svg?branch=master)
+
+| **Documentation**                        | **Build Status**                  |
+|:----------------------------------------:|:---------------------------------:|
+| [![][docs-stable-img]][docs-stable-url]  | [![][travis-img]][travis-url]     |
+
+
+[docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
+[docs-stable-url]: https://pages.nist.gov/NeXLUncertainties.jl
+[travis-img]: https://travis-ci.com/usnistgov/NeXLUncertainties.jl.svg?branch=master
+[travis-url]: https://travis-ci.com/usnistgov/NeXLUncertainties.jl
 
 NeXLUncertainties implements propagation of uncertainties for multivariate measurement models.  A multivariate measurement model represents a class of models in which many input parameters (measured values or model parameters) are mapped into more than one output parameter.  Calculating these kinds of models using a univariate measurement model ignores correlations in the output parameters that result from sharing the same input parameters.
 
