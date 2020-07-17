@@ -1,7 +1,7 @@
 name = "NeXLUncertainties"
 uuid = "7127f3d6-1721-46bc-bb38-8fc703dd438e"
-authors = ["Nicholas W.M. Ritchie <nicholas.wm.ritchie@gmail.com>"]
-repo-url = "https://github.com/NicholasWMRitchie/NeXLUncertainties.jl"
+authors = ["Nicholas W.M. Ritchie <nicholas.ritchie@nist.gov>"]
+repo-url = "https://github.com/usnistgov/NeXLUncertainties.jl"
 version = "0.1.0"
 
 [deps]
