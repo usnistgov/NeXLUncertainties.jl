@@ -1,5 +1,23 @@
 # NeXLUncertainties.jl
 
+## Installing NeXLUncertainies.jl
+
+NeXLUncertainies is available throught the standard Julia registry and can be
+installed using the standard package manager.
+
+```julia
+julia> ]add NeXLUncertainties
+```
+
+or
+
+```julia
+julia> using Pkg
+julia> Pkg.add("NeXLUncertainties")
+```
+
+## About NeXLUncertainties.jl
+
 NeXLUncertainies is a library for propagating the uncertainty in multivariate
 measurement models. What does this mean?
 
