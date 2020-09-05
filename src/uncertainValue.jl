@@ -25,7 +25,7 @@ Base.add_sum(x::UncertainValue, y::UncertainValue)::Real = x.value + y.value
 Base.add_sum(x::AbstractFloat, y::UncertainValue)::Real = x + y.value
 
 function Base.round(uva::UncertainValue; defdigits=4)
-    r = σ(uva)>=1.0e-10*value(uva) ? convert(Int, ceil(max(1,log10(max(σ(uva), abs(value(uva)))/σ(uva)))))+2 : defdigits
+    r = (σ(uva)>=1.0e-10*value(uva)) && (abs(value(uva))>1.0e-100) ? convert(Int, ceil(max(1,log10(max(σ(uva), abs(value(uva)))/σ(uva)))))+2 : defdigits
     return uv(round(value(uva), RoundNearestTiesUp, sigdigits=r), round(σ(uva), RoundNearestTiesUp, sigdigits=2))
 end
 
