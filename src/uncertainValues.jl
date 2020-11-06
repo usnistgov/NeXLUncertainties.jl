@@ -179,18 +179,6 @@ function Base.filter(uvs::UncertainValues, labels::Vector{<:Label})::Matrix
     return m
 end
 
-function extract(labels::AbstractVector{<:Label}, uvss::UncertainValues)::UncertainValues
-    idx = map(l->indexin(l,uvss), labels) # look it up once...
-    vals = [ uvss.values[i] for i in idx ]
-    cov = zeros(length(idx), length(idx))
-    for (r, rl) in enumerate(idx)
-        for (c, cl) in enumerate(idx)
-            cov[c, r] = (cov[r, c] = uvss.covariance[rl, cl])
-        end
-    end
-    return uvs(labels, vals, cov)
-end
-
 Base.:*(aa::AbstractMatrix{Float64}, uvs::UncertainValues) =
     UncertainValues(uvs.labels, aa * uvs.values, aa * uvs.covariance * transpose(aa))
 
@@ -410,5 +398,22 @@ function labelsByType(types::AbstractVector{DataType}, uvs::UncertainValues)
     mapreduce(ty->labelsByType(ty, lbls), append!, types)
 end
 
-extract(ty::Type{T}, uvs::UncertainValues) where {T<:Label} =
-    Dict(lbl=>uvs[lbl] for lbl in filter(l->l isa ty,labels(uvs)))
+function extract(labels::AbstractVector{<:Label}, uvss::UncertainValues)::UncertainValues
+    idx = map(l->indexin(l,uvss), labels) # look it up once...
+    vals = Float64[ uvss.values[i] for i in idx ]
+    cov = zeros(length(idx), length(idx))
+    for (r, rl) in enumerate(idx)
+        for (c, cl) in enumerate(idx)
+            cov[c, r] = (cov[r, c] = uvss.covariance[rl, cl])
+        end
+    end
+    return uvs(labels, vals, cov)
+end
+
+function extract(labeltype::Type{T}, uvss::UncertainValues)::UncertainValues where {T <: Label}
+    return extract(labelsByType(labeltype, uvss), uvss)
+end
+
+function extract(labeltypes::AbstractVector{DataType}, uvss::UncertainValues)::UncertainValues
+    return extract(labelsByType(labeltypes, uvss), uvss)
+end
