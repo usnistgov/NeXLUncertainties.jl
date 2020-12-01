@@ -170,7 +170,7 @@ uncertainty(f::Real, k::Real=1) = zero(typeof(f))
 
 Computes the fractional uncertainty.
 """
-fractional(uv::UncertainValue)::Float64 = abs(uv.sigma/uv.value)
+fractional(uv::UncertainValue)::Float64 = abs(uv.value) > 1.0e-15*abs(uv.sigma) ? abs(uv.sigma/uv.value) : Inf64
 
 """
     fractional(f::Real)
