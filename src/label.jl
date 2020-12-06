@@ -1,5 +1,17 @@
+"""
+`Label` is the root abstract type used to provide unique identifiers for variables within
+`UncertainValues` and `LabeledValues`. See [BasicLabel]
+"""
+
+
 abstract type Label end
 
+
+"""
+`BasicLabel{T}` is a mechanism for creating `Label` around other objects.
+For example, BasicLabel{String} would create a `Label` using a `String`
+to provide a unique identifier.
+"""
 struct BasicLabel{T} <: Label
     value::T
     hc::UInt # cache the hash to ensure Dict and Set searches are fast
@@ -21,6 +33,14 @@ Base.isequal(l1::Label, l2::Label) = false
 Base.hash(bl::BasicLabel, h::UInt) =
     hash(bl.hc, h)
 
+
+"""
+labelsByType(ty::Type{<:Label}, labels::AbstractVector{<:Label})
+labelsByType(types::AbstractVector{DataType}, labels::AbstractVector{<:Label})
+
+Extracts all of a specific type of `Label` from a list of `Label`s. The second version
+extracts multiple different types in a single call.
+"""
 labelsByType(ty::Type{<:Label}, labels::AbstractVector{<:Label}) =
     filter(lbl->typeof(lbl)==ty, labels)
 

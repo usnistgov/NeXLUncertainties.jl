@@ -24,6 +24,12 @@ Base.one(::Type{UncertainValue}) = UncertainValue(1.0,0.0)
 Base.add_sum(x::UncertainValue, y::UncertainValue)::Real = x.value + y.value
 Base.add_sum(x::AbstractFloat, y::UncertainValue)::Real = x + y.value
 
+"""
+    Base.round(uva::UncertainValue; defdigits=4)
+
+Provides a (somewhat) intelligent formatter for `UncertainValue` objects that uses the
+uncertainty to suggest the number of digits to display.
+"""
 function Base.round(uva::UncertainValue; defdigits=4)
     r = (σ(uva)>=1.0e-10*value(uva)) && (abs(value(uva))>1.0e-100) ? convert(Int, ceil(max(1,log10(max(σ(uva), abs(value(uva)))/σ(uva)))))+2 : defdigits
     return uv(round(value(uva), RoundNearestTiesUp, sigdigits=r), round(σ(uva), RoundNearestTiesUp, sigdigits=2))
@@ -149,7 +155,7 @@ Returns the 1-σ uncertainty)
 Returns 0.
 """
 σ(f::Real) = zero(typeof(f))
-σ(m::Missing) = missing
+σ(m::Missing) = m
 
 """
     uncertainty(uv::UncertainValue, k::Real=1.0)

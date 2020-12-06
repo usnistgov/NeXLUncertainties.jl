@@ -77,6 +77,11 @@ the Jacobian but you'd otherwise like to use identical code to compute the funct
 """
 abstract type MeasurementModel end
 
+"""
+    MMResult = Tuple{LabeledValues,Union{Missing,AbstractMatrix{Float64}}}
+
+THe type of return values from the `compute(...)` function.
+"""
 const MMResult = Tuple{LabeledValues,Union{Missing,AbstractMatrix{Float64}}}
 
 # Allows measurement models to be used like functions
@@ -351,8 +356,8 @@ Base.:|(mm1::MeasurementModel, mm2::MeasurementModel) =
     ParallelMeasurementModel([mm1, mm2])
 
 # So missing measurement models compile down to a NoOP
-Base.:|(mm1::MeasurementModel, mm2::Missing) = mm1
-Base.:|(mm1::Missing, mm2::MeasurementModel) = mm2
+Base.:|(mm1::MeasurementModel, ::Missing) = mm1
+Base.:|(::Missing, mm2::MeasurementModel) = mm2
 
 
 Base.:^(mm1::ParallelMeasurementModel, mm2::MeasurementModel) =
@@ -368,8 +373,8 @@ Base.:^(mm1::MeasurementModel, mm2::MeasurementModel) =
     ParallelMeasurementModel([mm1, mm2], true)
 
 # So missing measurement models compile down to a NoOP
-Base.:^(mm1::MeasurementModel, mm2::Missing) = mm1
-Base.:^(mm1::Missing, mm2::MeasurementModel) = mm2
+Base.:^(mm1::MeasurementModel, ::Missing) = mm1
+Base.:^(::Missing, mm2::MeasurementModel) = mm2
 
 """
     parallel(mm1::MeasurementModel, models::MeasurementModel...)

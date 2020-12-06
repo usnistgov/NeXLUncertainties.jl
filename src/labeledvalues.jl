@@ -93,6 +93,9 @@ A copy `Vector` of the values in order.
 """
 Base.values(lv::LabeledValues)::Vector{Float64} = copy(lv.values)
 
+"""
+`asa(::DataFrame, lv::LabeledValues)` extracts a `LabeledValues` object into a `DataFrame` in Name and Value columns.
+"""
 function asa(::DataFrame, lv::LabeledValues)
     name, value = String[], Float64[]
     for lbl in labels(lv)
