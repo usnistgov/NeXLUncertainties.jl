@@ -1,5 +1,6 @@
 using Printf
 using Statistics
+using LaTeXStrings
 
 """
     UncertainValue
@@ -322,30 +323,72 @@ function Base.parse(::Type{UncertainValue}, str::AbstractString)::UncertainValue
 end
 
 function Base.show(io::IO,  uv::UncertainValue)
-    lr = uv.sigma>0 ? log10(abs(uv.value)/uv.sigma)+2.0 : 4.0
-    if log10(abs(uv.value))<lr
-        if lr>=6.0
-            @printf(io,"%0.7g ± %0.2g",uv.value,uv.sigma)
-        elseif lr>=5.0
-            @printf(io,"%0.6g ± %0.2g",uv.value,uv.sigma)
-        elseif lr>=4.0
-            @printf(io,"%0.5g ± %0.2g",uv.value,uv.sigma)
-        elseif lr>=3.0
-            @printf(io,"%0.4g ± %0.2g",uv.value,uv.sigma)
+    lv, ls, lr = map(v->floor(Int,log10(abs(v))), ( uv.value, uv.sigma, uv.value/uv.sigma))
+    # @show ( lv, ls, lr )
+    if (ls < -4) || (ls>6)
+        if lr < 1
+            @printf(io,"%0.1e ± %0.1e", uv.value, uv.sigma)
+        elseif lr < 2
+            @printf(io,"%0.2e ± %0.1e", uv.value, uv.sigma)
+        elseif lr < 3
+            @printf(io,"%0.3e ± %0.1e", uv.value, uv.sigma)
+        elseif lr < 4
+            @printf(io,"%0.4e ± %0.1e", uv.value, uv.sigma)
+        elseif lr < 5
+            @printf(io,"%0.5e ± %0.1e", uv.value, uv.sigma)
         else
-            @printf(io,"%0.3g ± %0.2g",uv.value,uv.sigma)
+            @printf(io,"%0.6e ± %0.1e", uv.value, uv.sigma)
         end
-    else
-        if lr>6.0
-            @printf(io,"%0.7e ± %0.2e",uv.value,uv.sigma)
-        elseif lr>5.0
-            @printf(io,"%0.6e ± %0.2e",uv.value,uv.sigma)
-        elseif lr>4.0
-            @printf(io,"%0.5e ± %0.2e",uv.value,uv.sigma)
-        elseif lr>3.0
-            @printf(io,"%0.4e ± %0.2e",uv.value,uv.sigma)
-        else
-            @printf(io,"%0.3e ± %0.2e",uv.value,uv.sigma)
+    else # lv < 0 && lv > -4
+        if lr > 6
+            @printf(io, "%e ± %0.1e",uv.value,uv.sigma)
+        elseif ls >= 0
+            @printf(io,"%0.0f ± %0.0f",uv.value,uv.sigma)
+        elseif ls==-1
+            @printf(io,"%0.2f ± %0.2f",uv.value,uv.sigma)
+        elseif ls==-2
+            @printf(io,"%0.3f ± %0.3f",uv.value,uv.sigma)
+        else# if ls==-3
+            @printf(io,"%0.4f ± %0.4f",uv.value,uv.sigma)
         end
     end
+end
+
+"""
+    function asa(::Type{LaTeXString},  uv::UncertainValue)
+
+Converts an `UncertainValue` to a `LaTeXString` in a reasonable manner.
+Requires `\\usepackage{siunitx}` which defines `\\num{}`.
+"""
+function asa(::Type{LaTeXString},  uv::UncertainValue)
+    lv, ls, lr = map(v->floor(Int,log10(abs(v))), ( uv.value, uv.sigma, uv.value/uv.sigma))
+    # @show ( lv, ls, lr )
+    res = if (ls < -4) || (ls>6)
+        if lr < 1
+            @sprintf("\$\\num{%0.1e} \\pm \\num{%0.1e}\$", uv.value, uv.sigma)
+        elseif lr < 2
+            @sprintf("\$\\num{%0.2e} \\pm \\num{%0.1e}\$", uv.value, uv.sigma)
+        elseif lr < 3
+            @sprintf("\$\\num{%0.3e} \\pm \\num{%0.1e}\$", uv.value, uv.sigma)
+        elseif lr < 4
+            @sprintf("\$\\num{%0.4e} \\pm \\num{%0.1e}\$", uv.value, uv.sigma)
+        elseif lr < 5
+            @sprintf("\$\\num{%0.5e} \\pm \\num{%0.1e}\$", uv.value, uv.sigma)
+        else
+            @sprintf("\$\\num{%0.6e} \\pm \\num{%0.1e}\$", uv.value, uv.sigma)
+        end
+    else # lv < 0 && lv > -4
+        if lr > 6
+            @sprintf("\$\\num{%e} \\pm \\num{%0.1e}\$",uv.value,uv.sigma)
+        elseif ls >= 0
+            @sprintf("\$\\num{%0.0f} \\pm \\num{%0.0f}\$",uv.value,uv.sigma)
+        elseif ls==-1
+            @sprintf("\$\\num{%0.2f} \\pm \\num{%0.2f}\$",uv.value,uv.sigma)
+        elseif ls==-2
+            @sprintf("\$\\num{%0.3f} \\pm \\num{%0.3f}\$",uv.value,uv.sigma)
+        else# if ls==-3
+            @sprintf("\$\\num{%0.4f} \\pm \\num{%0.4f}\$",uv.value,uv.sigma)
+        end
+    end
+    return latexstring(res)
 end
