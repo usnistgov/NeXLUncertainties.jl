@@ -76,31 +76,30 @@ function uvs(
     values::AbstractVector{Float64},
     covar::AbstractMatrix{Float64},
 )
-    @assert length(labels)==length(values)
-    @assert length(labels)==size(covar,1)
-    @assert length(labels)==size(covar,2)
+    @assert length(labels) == length(values)
+    @assert length(labels) == size(covar, 1)
+    @assert length(labels) == size(covar, 2)
     return UncertainValues(
-    Dict{Label,Int}(l => i for (i, l) in enumerate(labels)),
-    values,
-    covar)
+        Dict{Label,Int}(l => i for (i, l) in enumerate(labels)),
+        values,
+        covar,
+    )
 end
 
 function uvs(
-        labels::AbstractVector{<:Label},
-        values::AbstractVector{Float64},
-        vars::AbstractVector{Float64}
+    labels::AbstractVector{<:Label},
+    values::AbstractVector{Float64},
+    vars::AbstractVector{Float64},
 )
-    @assert length(labels)==length(values)
-    @assert length(labels)==length(vars)
-    return uvs(labels,values,diagm(vars))
+    @assert length(labels) == length(values)
+    @assert length(labels) == length(vars)
+    return uvs(labels, values, diagm(vars))
 end
 
-uvs(values::Pair{<:Label, UncertainValue}...) = uvs(Dict(values))
-uvs(value::Pair{<:Label, UncertainValue}) = uvs(Dict(value))
+uvs(values::Pair{<:Label,UncertainValue}...) = uvs(Dict(values))
+uvs(value::Pair{<:Label,UncertainValue}) = uvs(Dict(value))
 
-function uvs(
-        values::Dict{<:Label, UncertainValue}
-)
+function uvs(values::Dict{<:Label,UncertainValue})
     labels, vals, vars = Vector{Label}(), Vector{Float64}(), Vector{Float64}()
     for (lbl, uv) in values
         push!(labels, lbl)
@@ -119,15 +118,15 @@ Each row `r` in samples represents a measured quantity as identified by `labels[
 Each column represents a single set of measurements of all the labeled quantities.
 """
 function estimated(labels::Vector{<:Label}, samples::Matrix{Float64})::UncertainValues
-    @assert length(labels)==size(samples,1) "label length must equal row count in estimated"
-    nvars, nsamples = size(samples,1), size(samples,2)
-    μ = mean.(samples[k,:] for k in 1:nvars)
-    n = collect( samples[k,:].-μ[k] for k in 1:nvars)
-    Σ = Matrix{Float64}(undef,nvars,nvars)
-    for j in 1:nvars, k in 1:j
-        Σ[j,k] = (Σ[k,j] = dot(n[j],n[k])/nsamples)
+    @assert length(labels) == size(samples, 1) "label length must equal row count in estimated"
+    nvars, nsamples = size(samples, 1), size(samples, 2)
+    μ = mean.(samples[k, :] for k = 1:nvars)
+    n = collect(samples[k, :] .- μ[k] for k = 1:nvars)
+    Σ = Matrix{Float64}(undef, nvars, nvars)
+    for j = 1:nvars, k = 1:j
+        Σ[j, k] = (Σ[k, j] = dot(n[j], n[k]) / nsamples)
     end
-    return uvs(labels, μ, Σ )
+    return uvs(labels, μ, Σ)
 end
 
 function checkUVS!(
@@ -152,7 +151,8 @@ Base.haskey(uvs::UncertainValues, lbl::Label) = haskey(uvs.labels, lbl)
 Returns the 1σ uncertainty associated with the specified label
 """
 σ(lbl::Label, uvs::UncertainValues) = sqrt(variance(lbl, uvs))
-σ(lbl::Label, uvs::UncertainValues, def) = haskey(uvs.labels, lbl) ? sqrt(variance(lbl, uvs)) : def
+σ(lbl::Label, uvs::UncertainValues, def) =
+    haskey(uvs.labels, lbl) ? sqrt(variance(lbl, uvs)) : def
 
 
 """
@@ -160,7 +160,8 @@ Returns the 1σ uncertainty associated with the specified label
 
 Returns the Pearson correlation coefficient between variables `a` and `b`.
 """
-correlation(a::Label, b::Label, uvs::UncertainValues) = covariance(a, b, uvs) / (σ(a, uvs) * σ(b, uvs))
+correlation(a::Label, b::Label, uvs::UncertainValues) =
+    covariance(a, b, uvs) / (σ(a, uvs) * σ(b, uvs))
 
 """
     Base.filter(uvs::UncertainValues, labels::Vector{<:Label})::Matrix
@@ -169,7 +170,7 @@ Extract the covariance matrix associated with the variables specified in labels
 into a Matrix.
 """
 function Base.filter(uvs::UncertainValues, labels::Vector{<:Label})::Matrix
-    idx = map(l->uvs.labels[l], labels) # look it up once...
+    idx = map(l -> uvs.labels[l], labels) # look it up once...
     m = zeros(length(idx), length(idx))
     for (r, rl) in enumerate(idx)
         for (c, cl) in enumerate(idx)
@@ -191,8 +192,7 @@ Base.:*(aa::Diagonal{Float64}, uvs::UncertainValues) =
 
 Combines the disjoint UncertainValues in uvss into a single UncertainValues object.
 """
-Base.cat(uvss::AbstractArray{UncertainValues})::UncertainValues =
-    cat(uvss...)
+Base.cat(uvss::AbstractArray{UncertainValues})::UncertainValues = cat(uvss...)
 
 """
     cat(uvss::UncertainValues...)::UncertainValues
@@ -207,7 +207,11 @@ function Base.cat(uvss::UncertainValues...)::UncertainValues
                 if !(lu in res)
                     push!(res, lu)
                 else
-                    throw(ErrorException("Unable to combine UncertainValues with duplicate labels."))
+                    throw(
+                        ErrorException(
+                            "Unable to combine UncertainValues with duplicate labels.",
+                        ),
+                    )
                 end
             end
         end
@@ -235,7 +239,10 @@ Base.show(io::IO, uvs::UncertainValues) = print(
     io,
     "UVS[" *
     join(
-        (@sprintf("%s = %-0.3g ± %-0.3g", lbl, value(lbl, uvs), σ(lbl, uvs)) for lbl in labels(uvs)),
+        (
+            @sprintf("%s = %-0.3g ± %-0.3g", lbl, value(lbl, uvs), σ(lbl, uvs)) for
+            lbl in labels(uvs)
+        ),
         ", ",
     ) *
     "]",
@@ -256,24 +263,41 @@ function Base.show(io::IO, ::MIME"text/plain", uvs::UncertainValues)
 end
 
 Base.show(io::IO, m::MIME"text/html", uvs::UncertainValues) =
-    # We piggyback off DataFrames here because generating a good looking table isn't easy...
-    show(io, m, asa(DataFrame, uvs),summary=false, eltypes=false)
+# We piggyback off DataFrames here because generating a good looking table isn't easy...
+    show(io, m, asa(DataFrame, uvs), summary = false, eltypes = false)
 
 function Base.show(io::IO, ::MIME"text/markdown", uvs::UncertainValues)
-    fmt(x) = @sprintf("%0.2e",x)
+    fmt(x) = @sprintf("%0.2e", x)
     cv(r, c) = r == c ? "($(fmt(σ(r,uvs))))²" : "$(fmt(covariance(r,c,uvs)))"
-    esc(ss) = replace(ss,"|"=>"\\|")
-    ext(ss,l) = ss*repeat(" ",l-length(ss))
+    esc(ss) = replace(ss, "|" => "\\|")
+    ext(ss, l) = ss * repeat(" ", l - length(ss))
     lbls, rows = labels(uvs), []
-    push!(rows, [ "Labels","Values","", repr.(lbls)...])
+    push!(rows, ["Labels", "Values", "", repr.(lbls)...])
     for lbl in lbls
-        push!(rows, [ repr(lbl), fmt(value(lbl,uvs))," ", (cv(lbl,col) for col in lbls)...])
+        push!(
+            rows,
+            [repr(lbl), fmt(value(lbl, uvs)), " ", (cv(lbl, col) for col in lbls)...],
+        )
     end
     cl = maximum(length(rows[j][i]) for j in eachindex(rows) for i in eachindex(rows[j]))
-    insert!(rows, 2, [ ":$(repeat("-",cl-2))-", ":$(repeat("-",cl-2)):",":$(repeat("-",cl-2)):",(":$(repeat("-",cl-2)):" for l in lbls)...])
-    rows[(length(rows)-3)÷2+3][3]=ext("±",cl)
-    ss = join( ("| "*join( (ext(rows[r][c],cl) for c in eachindex(rows[r]))," | ")*" |" for r in eachindex(rows)),"\n")
-    print(io,ss)
+    insert!(
+        rows,
+        2,
+        [
+            ":$(repeat("-",cl-2))-",
+            ":$(repeat("-",cl-2)):",
+            ":$(repeat("-",cl-2)):",
+            (":$(repeat("-",cl-2)):" for l in lbls)...,
+        ],
+    )
+    rows[(length(rows)-3)÷2+3][3] = ext("±", cl)
+    ss = join(
+        (
+            "| " * join((ext(rows[r][c], cl) for c in eachindex(rows[r])), " | ") * " |" for r in eachindex(rows)
+        ),
+        "\n",
+    )
+    print(io, ss)
 end
 
 """
@@ -292,7 +316,11 @@ function Base.getindex(uvs::UncertainValues, lbl::Label)::UncertainValue
     return UncertainValue(uvs.values[idx], sqrt(uvs.covariance[idx, idx]))
 end
 
-function Base.get(uvs::UncertainValues, lbl::Label, def::Union{Missing,UncertainValue})::Union{Missing,UncertainValue}
+function Base.get(
+    uvs::UncertainValues,
+    lbl::Label,
+    def::Union{Missing,UncertainValue},
+)::Union{Missing,UncertainValue}
     idx = get(uvs.labels, lbl, -1)
     return idx ≠ -1 ? UncertainValue(uvs.values[idx], sqrt(uvs.covariance[idx, idx])) : def
 end
@@ -308,7 +336,7 @@ Returns a Vector of Label in the order in which they appear in `uvs.values` and
 `uvs.covariance`.
 """
 function labels(uvs::UncertainValues)::Vector{<:Label}
-    res = Array{Label}(undef,length(uvs.labels))
+    res = Array{Label}(undef, length(uvs.labels))
     for (k, v) in uvs.labels
         res[v] = k
     end
@@ -321,7 +349,8 @@ end
 The value associate with the Label.
 """
 value(lbl::Label, uvs::UncertainValues) = uvs.values[uvs.labels[lbl]]
-value(lbl::Label, uvs::UncertainValues, default) = haskey(uvs.labels, lbl) ? uvs.values[uvs.labels[lbl]] : default
+value(lbl::Label, uvs::UncertainValues, default) =
+    haskey(uvs.labels, lbl) ? uvs.values[uvs.labels[lbl]] : default
 
 """
     values(uvs::UncertainValues)::Vector{Float64}
@@ -341,7 +370,8 @@ covariance(lbl1::Label, lbl2::Label, uvs::UncertainValues) =
 
 covariance(lbl1::Label, lbl2::Label, uvs::UncertainValues, default) =
     haskey(uvs.labels, lbl1) && haskey(uvs.labels, lbl2) ? #
-        uvs.covariance[uvs.labels[lbl1], uvs.labels[lbl2]] : default
+    uvs.covariance[uvs.labels[lbl1], uvs.labels[lbl2]] :
+    default
 
 """
    variance(lbl::Label, uvs::UncertainValues)
@@ -357,18 +387,22 @@ variance(lbl::Label, uvs::UncertainValues, default) =
 function asa( #
     ::Type{DataFrame},
     uvss::UncertainValues,
-    withCovars=true
+    withCovars = true,
 )::DataFrame
     lbls = labels(uvss)
     df = DataFrame()
-    insertcols!(df, 1, :Variable => map(lbl->"$lbl", lbls))
-    insertcols!(df, 2, :Values => map(lbl->value(lbl, uvss), lbls))
+    insertcols!(df, 1, :Variable => map(lbl -> "$lbl", lbls))
+    insertcols!(df, 2, :Values => map(lbl -> value(lbl, uvss), lbls))
     if withCovars
         for (i, cl) in enumerate(lbls)
-            insertcols!(df, 2+i, Symbol("$cl") => map(rl->covariance(rl, cl, uvss), lbls))
+            insertcols!(
+                df,
+                2 + i,
+                Symbol("$cl") => map(rl -> covariance(rl, cl, uvss), lbls),
+            )
         end
     else
-        insertcols!(df, 3, :σ => map(lbl->σ(lbl, uvss), lbls), )
+        insertcols!(df, 3, :σ => map(lbl -> σ(lbl, uvss), lbls))
     end
     return df
 end
@@ -378,8 +412,7 @@ end
 
 The uncertainty associated with specified label (k σ where default k=1)
 """
-uncertainty(lbl::Label, uvs::UncertainValues, k::Float64 = 1.0) =
-    k * σ(lbl, uvs)
+uncertainty(lbl::Label, uvs::UncertainValues, k::Float64 = 1.0) = k * σ(lbl, uvs)
 
 Base.indexin(lbl::Label, uvs::UncertainValues) = uvs.labels[lbl]
 
@@ -391,16 +424,16 @@ Converts the values of an UncertainValues object into a LabeledValues object.
 labeledvalues(uvs::UncertainValues) = LabeledValues(labels(uvs), uvs.values)
 
 labelsByType(ty::Type{<:Label}, uvs::UncertainValues) =
-    filter(lbl->typeof(lbl)==ty, labels(uvs))
+    filter(lbl -> typeof(lbl) == ty, labels(uvs))
 
 function labelsByType(types::AbstractVector{DataType}, uvs::UncertainValues)
     lbls = labels(uvs)
-    mapreduce(ty->labelsByType(ty, lbls), append!, types)
+    mapreduce(ty -> labelsByType(ty, lbls), append!, types)
 end
 
 function extract(labels::AbstractVector{<:Label}, uvss::UncertainValues)::UncertainValues
-    idx = map(l->indexin(l,uvss), labels) # look it up once...
-    vals = Float64[ uvss.values[i] for i in idx ]
+    idx = map(l -> indexin(l, uvss), labels) # look it up once...
+    vals = Float64[uvss.values[i] for i in idx]
     cov = zeros(length(idx), length(idx))
     for (r, rl) in enumerate(idx)
         for (c, cl) in enumerate(idx)
@@ -410,10 +443,16 @@ function extract(labels::AbstractVector{<:Label}, uvss::UncertainValues)::Uncert
     return uvs(labels, vals, cov)
 end
 
-function extract(labeltype::Type{T}, uvss::UncertainValues)::UncertainValues where {T <: Label}
+function extract(
+    labeltype::Type{T},
+    uvss::UncertainValues,
+)::UncertainValues where {T<:Label}
     return extract(labelsByType(labeltype, uvss), uvss)
 end
 
-function extract(labeltypes::AbstractVector{DataType}, uvss::UncertainValues)::UncertainValues
+function extract(
+    labeltypes::AbstractVector{DataType},
+    uvss::UncertainValues,
+)::UncertainValues
     return extract(labelsByType(labeltypes, uvss), uvss)
 end

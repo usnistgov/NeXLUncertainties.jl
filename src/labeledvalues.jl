@@ -13,35 +13,36 @@ the labels.
 """
 struct LabeledValues
     values::Vector{Float64}
-    index::Dict{<:Label, Int}
+    index::Dict{<:Label,Int}
 
-    function LabeledValues(
-        labels::AbstractVector{<:Label},
-        values::AbstractVector{Float64}
-    )
+    function LabeledValues(labels::AbstractVector{<:Label}, values::AbstractVector{Float64})
         @assert length(unique(labels)) == length(labels) "The labels are not all unique."
-        index = Dict{Label, Int}( labels[i] => i for i in eachindex(labels))
+        index = Dict{Label,Int}(labels[i] => i for i in eachindex(labels))
         return new(copy(values), index)
     end
     function LabeledValues(
-        labels::NTuple{N, Label},
-        values::NTuple{N, Float64}
-    ) where N <: Any
+        labels::NTuple{N,Label},
+        values::NTuple{N,Float64},
+    ) where {N<:Any}
         @assert length(unique(labels)) == length(labels) "The labels are not all unique."
-        index = Dict{Label, Int}( labels[i] => i for i in eachindex(labels))
+        index = Dict{Label,Int}(labels[i] => i for i in eachindex(labels))
         return new([values...], index)
     end
     function LabeledValues(prs::Pair{<:Label,Float64}...)
-        labels = [ pr.first for pr in prs ]
-        values = [ pr.second for pr in prs ]
+        labels = [pr.first for pr in prs]
+        values = [pr.second for pr in prs]
         return LabeledValues(labels, values)
     end
 end
 
 Base.eachindex(lv::LabeledValues) = eachindex(values)
 
-Base.show(io::IO, lv::LabeledValues) =
-    print(io,"LabeledValues[\n"*join(("\t"*repr(lbl)*" => "*repr(lv[lbl]) for lbl in labels(lv)), "\n")*"\n]")
+Base.show(io::IO, lv::LabeledValues) = print(
+    io,
+    "LabeledValues[\n" *
+    join(("\t" * repr(lbl) * " => " * repr(lv[lbl]) for lbl in labels(lv)), "\n") *
+    "\n]",
+)
 
 Base.copy(lv::LabeledValues) = LabeledValues(copy(lv.values), copy(lv.index))
 
@@ -55,11 +56,11 @@ Returns the value associated with the specified `Label`.
 """
 value(lv::LabeledValues, lbl::Label)::Float64 = lv.values[indexin(lbl, lv)]
 Base.length(lv::LabeledValues) = length(lv.values)
-Base.getindex(lv::LabeledValues, lbl::Label)::Float64 = lv.values[indexin(lbl,lv)]
+Base.getindex(lv::LabeledValues, lbl::Label)::Float64 = lv.values[indexin(lbl, lv)]
 
 function Base.setindex!(lv::LabeledValues, val::Real, lbl::Label)
     @assert !Base.haskey(lv.index, lbl) "$lbl already exists in LabeledValues - $lv"
-    push!(lv.values,  val)
+    push!(lv.values, val)
     index[lbl] = length(values) + 1
 end
 
@@ -102,5 +103,5 @@ function asa(::DataFrame, lv::LabeledValues)
         push!(name, repr(lbl))
         push!(value, lv[lbl])
     end
-    return DataFrame(Name=name, Value=value)
+    return DataFrame(Name = name, Value = value)
 end
