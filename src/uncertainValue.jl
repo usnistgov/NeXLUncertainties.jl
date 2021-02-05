@@ -345,75 +345,53 @@ function Base.parse(::Type{UncertainValue}, str::AbstractString)::UncertainValue
     UncertainValue(val, sigma)
 end
 
-function Base.show(io::IO, uv::UncertainValue)
+function _showstr(uv::UncertainValue, pm="±"):String
     lv, ls, lr =
         map(v -> floor(Int, log10(abs(v))), (uv.value, uv.sigma, uv.value / uv.sigma))
-    # @show ( lv, ls, lr )
-    if (ls < -4) || (ls > 6)
+    return if (ls < -4) || (ls > 6)
         if lr < 1
-            @printf(io, "%0.1e ± %0.1e", uv.value, uv.sigma)
+            @sprintf("%0.1e %s %0.1e", uv.value, pm, uv.sigma)
         elseif lr < 2
-            @printf(io, "%0.2e ± %0.1e", uv.value, uv.sigma)
+            @sprintf("%0.2e %s %0.1e", uv.value, pm, uv.sigma)
         elseif lr < 3
-            @printf(io, "%0.3e ± %0.1e", uv.value, uv.sigma)
+            @sprintf("%0.3e %s %0.1e", uv.value, pm, uv.sigma)
         elseif lr < 4
-            @printf(io, "%0.4e ± %0.1e", uv.value, uv.sigma)
+            @sprintf("%0.4e %s %0.1e", uv.value, pm, uv.sigma)
         elseif lr < 5
-            @printf(io, "%0.5e ± %0.1e", uv.value, uv.sigma)
+            @sprintf("%0.5e %s %0.1e", uv.value, pm, uv.sigma)
         else
-            @printf(io, "%0.6e ± %0.1e", uv.value, uv.sigma)
+            @sprintf("%0.6e %s %0.1e", uv.value, pm, uv.sigma)
         end
     else # lv < 0 && lv > -4
         if lr > 6
-            @printf(io, "%e ± %0.1e", uv.value, uv.sigma)
+            @sprintf("%e %s %0.1e", uv.value, pm, uv.sigma)
         elseif ls >= 0
-            @printf(io, "%0.0f ± %0.0f", uv.value, uv.sigma)
+            @sprintf("%0.0f %s %0.0f", uv.value, pm, uv.sigma)
         elseif ls == -1
-            @printf(io, "%0.2f ± %0.2f", uv.value, uv.sigma)
+            @sprintf("%0.2f %s %0.2f", uv.value, pm, uv.sigma)
         elseif ls == -2
-            @printf(io, "%0.3f ± %0.3f", uv.value, uv.sigma)
+            @sprintf("%0.3f %s %0.3f", uv.value, pm, uv.sigma)
         else# if ls==-3
-            @printf(io, "%0.4f ± %0.4f", uv.value, uv.sigma)
+            @sprintf("%0.4f %s %0.4f", uv.value, pm, uv.sigma)
         end
     end
 end
 
+Base.show(io::IO, uv::UncertainValue) = print(io, _showstr(uv))
+
 """
-    function asa(::Type{LaTeXString},  uv::UncertainValue)
+    LaTeXStrings.latexstring(uv::UncertainValue; fmt=nothing, mode=:normal[|:siunitx])::LaTeXString
 
 Converts an `UncertainValue` to a `LaTeXString` in a reasonable manner.
-Requires `\\usepackage{siunitx}` which defines `\\num{}`.
+`mode=:siunitx" requires `\\usepackage{siunitx}` which defines `\\num{}`.
+`fmt` is a C-style format string like "%0.2f" or nothing for an "intelligent" default.
 """
-function asa(::Type{LaTeXString}, uv::UncertainValue)
-    lv, ls, lr =
-        map(v -> floor(Int, log10(abs(v))), (uv.value, uv.sigma, uv.value / uv.sigma))
-    # @show ( lv, ls, lr )
-    res = if (ls < -4) || (ls > 6)
-        if lr < 1
-            @sprintf("\$\\num{%0.1e} \\pm \\num{%0.1e}\$", uv.value, uv.sigma)
-        elseif lr < 2
-            @sprintf("\$\\num{%0.2e} \\pm \\num{%0.1e}\$", uv.value, uv.sigma)
-        elseif lr < 3
-            @sprintf("\$\\num{%0.3e} \\pm \\num{%0.1e}\$", uv.value, uv.sigma)
-        elseif lr < 4
-            @sprintf("\$\\num{%0.4e} \\pm \\num{%0.1e}\$", uv.value, uv.sigma)
-        elseif lr < 5
-            @sprintf("\$\\num{%0.5e} \\pm \\num{%0.1e}\$", uv.value, uv.sigma)
-        else
-            @sprintf("\$\\num{%0.6e} \\pm \\num{%0.1e}\$", uv.value, uv.sigma)
-        end
-    else # lv < 0 && lv > -4
-        if lr > 6
-            @sprintf("\$\\num{%e} \\pm \\num{%0.1e}\$", uv.value, uv.sigma)
-        elseif ls >= 0
-            @sprintf("\$\\num{%0.0f} \\pm \\num{%0.0f}\$", uv.value, uv.sigma)
-        elseif ls == -1
-            @sprintf("\$\\num{%0.2f} \\pm \\num{%0.2f}\$", uv.value, uv.sigma)
-        elseif ls == -2
-            @sprintf("\$\\num{%0.3f} \\pm \\num{%0.3f}\$", uv.value, uv.sigma)
-        else# if ls==-3
-            @sprintf("\$\\num{%0.4f} \\pm \\num{%0.4f}\$", uv.value, uv.sigma)
-        end
+function LaTeXStrings.latexstring(uv::UncertainValue; fmt=nothing, mode=:normal)::LaTeXString
+    pre, post = (mode==:siunitx ? ( "\\num{", "}" ) : ( "", "" ))
+    if isnothing(fmt)
+        return latexstring(pre*_showstr(uv,raw"\pm")*post)
+    else
+        fmtrfunc = generate_formatter( fmt )
+        return latexstring(pre*fmtrfunc(value(uv))*" \\pm "*fmtrfunc(uncertainty(uv))*post)
     end
-    return latexstring(res)
 end

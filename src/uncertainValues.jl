@@ -3,6 +3,7 @@
 using Printf
 using LinearAlgebra
 using DataFrames
+using Formatting
 
 """
     checkcovariance!(cov::AbstractMatrix)
@@ -98,6 +99,7 @@ end
 
 uvs(values::Pair{<:Label,UncertainValue}...) = uvs(Dict(values))
 uvs(value::Pair{<:Label,UncertainValue}) = uvs(Dict(value))
+covariance(uvs::UncertainValues) = uvs.covariance
 
 function uvs(values::Dict{<:Label,UncertainValue})
     labels, vals, vars = Vector{Label}(), Vector{Float64}(), Vector{Float64}()
@@ -390,9 +392,7 @@ function asa( #
     withCovars = true,
 )::DataFrame
     lbls = labels(uvss)
-    df = DataFrame()
-    insertcols!(df, 1, :Variable => map(lbl -> "$lbl", lbls))
-    insertcols!(df, 2, :Values => map(lbl -> value(lbl, uvss), lbls))
+    df = DataFrame(Variable = map(lbl -> "$lbl", lbls), Values = map(lbl -> value(lbl, uvss), lbls))
     if withCovars
         for (i, cl) in enumerate(lbls)
             insertcols!(
@@ -455,4 +455,34 @@ function extract(
     uvss::UncertainValues,
 )::UncertainValues
     return extract(labelsByType(labeltypes, uvss), uvss)
+end
+
+"""
+
+    LaTeXStrings.latexstring(uvs::UncertainValues; fmt="%0.3f", mode=:normal[|:siunutx])::LaTeXString
+
+Formats a `UncertainValues` as a LaTeXString (`mode=:siunitx` uses `\\num{}` from the siunitx package.)
+Also requires the amsmath package for `vmatrix`
+"""
+function LaTeXStrings.latexstring(uvs::UncertainValues; fmt="%0.3f", mode=:normal)::LaTeXString
+    fmtrfunc = generate_formatter( fmt )
+    lbls = labels(uvs)
+    pre, post = ( mode == :siunitx ? ( raw"\num{", raw"}" ) : ( "", "" ) )
+    ls = join([ 
+            raw"\begin{vmatrix}", 
+            join([ repr(lbl) for lbl in lbls ], " \\\\\n"), 
+            raw"\end{vmatrix}" 
+        ],"\n") 
+    vals = join([ 
+            raw"\begin{vmatrix}", 
+            join([ pre*fmtrfunc(value(lbl,uvs))*post for lbl in lbls ], " \\\\\n"), 
+            raw"\end{vmatrix}" 
+        ],"\n") 
+    covs = join([
+        raw"\begin{vmatrix}", 
+        join( [
+            join( [ pre*fmtrfunc(covariance(lbl1, lbl2, uvs))*post for lbl1 in lbls ], " & ") 
+                for lbl2 in lbls ], " \\\\\n"),
+        raw"\end{vmatrix}" ],"\n")
+    return latexstring("$ls\n=$vals\n\\pm\n$covs")
 end

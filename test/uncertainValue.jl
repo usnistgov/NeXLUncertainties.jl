@@ -1,5 +1,6 @@
 using Test
 using NeXLUncertainties
+using LaTeXStrings
 
 
 @testset "Uncertainty" begin
@@ -117,5 +118,12 @@ using NeXLUncertainties
         @test isequal(parse(UncertainValue, "12.3 -+ 0.12"), uv(12.3, 0.12))
         @test isequal(parse(UncertainValue, repr(uv1)), uv1)
         @test isequal(parse(UncertainValue, repr(uv2)), uv2)
+    end
+    @testset "LaTeX" begin
+        @test isequal(latexstring(uv(1.0,0.033),mode=:normal), L"$1.000 \pm 0.033$")
+        @test isequal(latexstring(uv(1.0,0.033),mode=:normal), latexstring(uv(1.0,0.033)))
+        @test isequal(latexstring(uv(1.0,0.033),mode=:siunitx), L"$\num{1.000 \pm 0.033}$")
+        @test isequal(latexstring(uv(1.0,0.033),fmt = "%0.5f",mode=:normal), L"$1.00000 \pm 0.03300$")
+        @test isequal(latexstring(uv(1.0,0.033),fmt = "%0.4f",mode = :siunitx), L"$\num{1.0000 \pm 0.0330}$")
     end
 end
