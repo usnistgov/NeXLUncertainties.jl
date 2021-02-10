@@ -56,7 +56,8 @@ poisson(val::Int) = UncertainValue(convert(Float64, val), sqrt(convert(Float64, 
 
 Create an UncertainValue from a real value and 1σ uncertainty.
 """
-uv(val::Real, σ::Real) = UncertainValue(val, σ)
+uv(val::Real, σ::Real=0.0) = UncertainValue(val, σ)
+uv(uuvv::UncertainValue) = uuvv
 
 
 """
@@ -103,20 +104,24 @@ Base.sum(uvs::AbstractVector{UncertainValue}) =
 
 
 """
-    Statistics.mean(uvs::UncertainValue...)
-    Statistics.mean(uvs::AbstractVector{UncertainValue})
+    Statistics.mean(uvs::AbstractVector{UncertainValue}, minvar=0.0e-10)
 
 The variance weighted mean of a collection of UncertainValue items.
 (see https://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Variance_weights).
+Be careful! Adding a single value with value!=0 and σ=0.0 will cause NaN.
 """
-Statistics.mean(uvs::AbstractVector{UncertainValue}) = UncertainValue(
-    sum(value(x) / variance(x) for x in uvs) / sum(1.0 / variance(x) for x in uvs),
-    sqrt(1.0 / sum(1.0 / variance(x) for x in uvs)),
-)
-Statistics.mean(uvs::UncertainValue...) = UncertainValue(
-    sum(value(x) / variance(x) for x in uvs) / sum(1.0 / variance(x) for x in uvs),
-    sqrt(1.0 / sum(1.0 / variance(x) for x in uvs)),
-)
+function Statistics.mean(uvs::AbstractVector{UncertainValue})
+    return UncertainValue(
+        sum(value(x) / variance(x) for x in uvs) / sum(1.0 / variance(x) for x in uvs),
+        sqrt(1.0 / sum(1.0 / variance(x) for x in uvs)),
+    )
+end
+function Statistics.mean(uvs::UncertainValue...)
+    return UncertainValue(
+        sum(value(x) / variance(x) for x in uvs) / sum(1.0 / variance(x) for x in uvs),
+        sqrt(1.0 / sum(1.0 / variance(x) for x in uvs)),
+    )
+end
 
 """
     Statistics.std(uvs::UncertainValue...)
@@ -345,9 +350,9 @@ function Base.parse(::Type{UncertainValue}, str::AbstractString)::UncertainValue
     UncertainValue(val, sigma)
 end
 
-function _showstr(uv::UncertainValue, pm="±"):String
-    lv, ls, lr =
-        map(v -> floor(Int, log10(abs(v))), (uv.value, uv.sigma, uv.value / uv.sigma))
+function _showstr(uv::UncertainValue, pm = "±")
+    smin = max(uv.sigma, 1.0e-6 * abs(uv.value), 1.0e-10)
+    ls, lr = map(v -> floor(Int, log10(abs(v))), ( smin, max(1.0e-10, uv.value / smin)))
     return if (ls < -4) || (ls > 6)
         if lr < 1
             @sprintf("%0.1e %s %0.1e", uv.value, pm, uv.sigma)
@@ -386,12 +391,18 @@ Converts an `UncertainValue` to a `LaTeXString` in a reasonable manner.
 `mode=:siunitx" requires `\\usepackage{siunitx}` which defines `\\num{}`.
 `fmt` is a C-style format string like "%0.2f" or nothing for an "intelligent" default.
 """
-function LaTeXStrings.latexstring(uv::UncertainValue; fmt=nothing, mode=:normal)::LaTeXString
-    pre, post = (mode==:siunitx ? ( "\\num{", "}" ) : ( "", "" ))
+function LaTeXStrings.latexstring(
+    uv::UncertainValue;
+    fmt = nothing,
+    mode = :normal,
+)::LaTeXString
+    pre, post = (mode == :siunitx ? ("\\num{", "}") : ("", ""))
     if isnothing(fmt)
-        return latexstring(pre*_showstr(uv,raw"\pm")*post)
+        return latexstring(pre * _showstr(uv, raw"\pm") * post)
     else
-        fmtrfunc = generate_formatter( fmt )
-        return latexstring(pre*fmtrfunc(value(uv))*" \\pm "*fmtrfunc(uncertainty(uv))*post)
+        fmtrfunc = generate_formatter(fmt)
+        return latexstring(
+            pre * fmtrfunc(value(uv)) * " \\pm " * fmtrfunc(uncertainty(uv)) * post,
+        )
     end
 end
