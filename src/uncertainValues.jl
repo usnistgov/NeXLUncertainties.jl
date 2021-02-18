@@ -318,6 +318,11 @@ function Base.getindex(uvs::UncertainValues, lbl::Label)::UncertainValue
     return UncertainValue(uvs.values[idx], sqrt(uvs.covariance[idx, idx]))
 end
 
+function Base.isnan(lbl::Label, uvs::UncertainValues)::Bool
+    idx = uvs.labels[lbl]
+    return isnan(uvs.values[idx]) || isnan(uvs.covariance[idx,idx])
+end
+
 function Base.get(
     uvs::UncertainValues,
     lbl::Label,
@@ -381,7 +386,7 @@ covariance(lbl1::Label, lbl2::Label, uvs::UncertainValues, default) =
 The variance associated with the specified Label.
 """
 variance(lbl::Label, uvs::UncertainValues) =
-    uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]]
+    max(0.0, uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]])
 variance(lbl::Label, uvs::UncertainValues, default) =
     haskey(uvs.labels, lbl) ? uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]] : default
 
