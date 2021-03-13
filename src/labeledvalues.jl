@@ -16,7 +16,7 @@ struct LabeledValues
     index::Dict{<:Label,Int}
 
     function LabeledValues(labels::AbstractVector{<:Label}, values::AbstractVector{Float64})
-        @assert length(unique(labels)) == length(labels) "The labels are not all unique."
+        @assert length(unique(labels)) == length(labels) "The labels [$labels] are not all unique."
         index = Dict{Label,Int}(labels[i] => i for i in eachindex(labels))
         return new(copy(values), index)
     end
