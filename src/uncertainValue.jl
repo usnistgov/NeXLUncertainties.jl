@@ -24,6 +24,8 @@ Base.zero(::Type{UncertainValue}) = UncertainValue(0.0, 0.0)
 Base.one(::Type{UncertainValue}) = UncertainValue(1.0, 0.0)
 Base.add_sum(x::UncertainValue, y::UncertainValue)::Real = x.value + y.value
 Base.add_sum(x::AbstractFloat, y::UncertainValue)::Real = x + y.value
+Base.hash(uv::UncertainValue, h::UInt) = Base.hash(uv.value, Base.hash(uv.sigma, h))
+
 
 """
     Base.round(uva::UncertainValue; defdigits=4)
