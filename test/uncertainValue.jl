@@ -90,9 +90,46 @@ using LaTeXStrings
             uv(7.13, 1.23),
             atol = 0.01,
         )
+
+        @test isapprox(
+            multiply(uv(2.3, 0.4), uv(2.3, 0.4), -1.0),
+            uv(2.3*2.3, 0.0),
+            atol = 0.001
+        )
+
+        @test isapprox(
+            multiply(uv(2.3, 0.4), uv(2.3, 0.4), 1.0),
+            uv(2.3*2.3, 1.84),
+            atol = 0.001
+        )
+
+        @test isapprox(
+            multiply(uv(2.3, 0.4), uv(2.3, 0.4), 0.0),
+            uv(2.3*2.3, 1.301),
+            atol = 0.001
+        )
+
         @test isapprox(
             divide(uv(2.3, 0.4), uv(3.1, 0.2), -0.2),
-            uv(0.742, 0.146),
+            uv(0.74194, 0.146),
+            atol = 0.001,
+        )
+
+        @test isapprox(
+            divide(uv(2.3, 0.4), uv(2.3, 0.4), 1.0),
+            uv(1.0, 0.0),
+            atol = 0.001,
+        )
+
+        @test isapprox(
+            divide(uv(2.3, 0.4), uv(2.3, 0.4), -1.0),
+            uv(1.0, 0.348),
+            atol = 0.001,
+        )
+
+        @test isapprox(
+            divide(uv(2.3, 0.4), uv(2.3, 0.4), 0.0),
+            uv(1.0, 0.245),
             atol = 0.001,
         )
 
