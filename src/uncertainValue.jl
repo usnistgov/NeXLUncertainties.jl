@@ -165,7 +165,7 @@ Returns the 1-σ uncertainty)
 
 Returns 0.
 """
-σ(f::Real) = zero(typeof(f))
+σ(::Real) = zero(Float64)
 σ(m::Missing) = m
 
 """
@@ -173,14 +173,14 @@ Returns 0.
 
 Returns the k-σ uncertainty (defaults to k=1.0)
 """
-uncertainty(uv::UncertainValue, k::Real = 1) = k * uv.sigma
+uncertainty(uv::UncertainValue, k::Float64 = 1.0) = k * uv.sigma
 
 """
     uncertainty(f::Real, k::Real=1.0)
 
 Returns 0.0.
 """
-uncertainty(f::Real, k::Real = 1) = zero(typeof(f))
+uncertainty(::Real, ::Real) = zero(Float64)
 
 """
     fractional(uv::UncertainValue)
@@ -209,7 +209,7 @@ value(uv::UncertainValue) = uv.value
 
 Returns f
 """
-value(f::Real) = f
+value(f::Real) = Float64(f)
 value(m::Missing) = m
 
 """
@@ -239,17 +239,11 @@ end
 Computes `n/d` where `n` and `d` are UncertainValue and `cc` is the correlation coefficient
 defined as `cc = covar(n,d)/( σ(n), σ(d) )`
 """
-function divide(n::UncertainValue, d::UncertainValue, cc::AbstractFloat)
+function divide(a::UncertainValue, b::UncertainValue, cc::Float64=0.0)
     @assert (cc >= -1.0) & (cc <= 1.0) "The Pearson correlation coefficient must be on [-1.0, 1.0] - $cc"
-    f, sab = n.value / d.value, covariance(n, d, cc)
+    f, sab = a.value / b.value, covariance(a, b, cc)
     return UncertainValue(
-        f,
-        sqrt(
-            f^2 * (
-                (n.sigma / n.value)^2 + (d.sigma / d.value)^2 -
-                (2.0 * sab) / (n.value * d.value)
-            ),
-        ),
+        f, abs(1.0/b.value)*sqrt(a.sigma^2 + ((b.sigma*a.value) / b.value)^2 - 2.0 * sab * a.value / b.value)
     )
 end
 
@@ -259,19 +253,11 @@ end
 Computes `a*b` where `a` and `b` are UncertainValue and `cc` is the correlation coefficient
 defined as `cc = covar(a,b)/( σ(a), σ(b) )`
 """
-function multiply(a::UncertainValue, b::UncertainValue, cc::AbstractFloat)
+function multiply(a::UncertainValue, b::UncertainValue, cc::Float64=0.0)
     @assert (cc >= -1.0) & (cc <= 1.0) "The Pearson correlation coefficient must be on [-1.0, 1.0] - $cc"
     f, sab = a.value * b.value, covariance(a, b, cc)
-    return UncertainValue(
-        f,
-        sqrt(
-            f^2 * (
-                (a.sigma / a.value)^2 +
-                (b.sigma / b.value)^2 +
-                (2.0 * sab) / (a.value * b.value)
-            ),
-        ),
-    )
+    x, y = a.sigma * b.value, b.sigma*a.value 
+    return UncertainValue(f, sqrt(x^2 + y^2 + 2.0 * cc * x * y))
 end
 
 """
