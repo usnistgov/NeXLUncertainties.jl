@@ -116,7 +116,7 @@ struct MCSampler
     function MCSampler(inp::UncertainValues, rng::AbstractRNG, eps = 1.0e-10)
         f(lbl) = abs(fractional(inp[lbl])) < eps
         z = filter(f, labels(inp))
-        zeros = LabeledValues(z, Float64[value(lbl, inp) for lbl in z])
+        zeros = LabeledValues(z, Float64[value(inp, lbl) for lbl in z])
         nz = filter(lbl -> !(lbl in z), labels(inp))
         nzuvs = extract(nz, inp)
         # CSV.write(joinpath(homedir(),"Desktop\\znuvs.csv"), asa(DataFrame,nzuvs))

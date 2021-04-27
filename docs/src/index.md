@@ -115,11 +115,11 @@ B          | 4.5      |     |   0.001       0.004       0         |
 C          | 5.6      |     |   0           0           0.009     |
 julia> u1[nl"B"]
 4.5 ± 0.063
-julia> covariance(nl"A",nl"B",u1)
+julia> covariance(u1, nl"A",nl"B")
 0.001
-julia> value(nl"A",u1)
+julia> value(u1, nl"A")
 3.4
-julia> σ(nl"A",u1)
+julia> σ(u1, nl"A")
 0.1
 ```
 

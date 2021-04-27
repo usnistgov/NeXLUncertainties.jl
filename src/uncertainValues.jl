@@ -152,18 +152,17 @@ Base.haskey(uvs::UncertainValues, lbl::Label) = haskey(uvs.labels, lbl)
 
 Returns the 1σ uncertainty associated with the specified label
 """
-σ(lbl::Label, uvs::UncertainValues) = sqrt(variance(lbl, uvs))
-σ(lbl::Label, uvs::UncertainValues, def) =
-    haskey(uvs.labels, lbl) ? sqrt(variance(lbl, uvs)) : def
-
+σ(uvs::UncertainValues, lbl::Label) = sqrt(variance(uvs, lbl))
+σ(uvs::UncertainValues, lbl::Label, def) =
+    haskey(uvs.labels, lbl) ? sqrt(variance(uvs, lbl)) : def
 
 """
-    correlation(a::Label, b::Label, uvs::UncertainValues)
+    correlation(uvs::UncertainValues, a::Label, b::Label)
 
 Returns the Pearson correlation coefficient between variables `a` and `b`.
 """
-correlation(a::Label, b::Label, uvs::UncertainValues) =
-    covariance(a, b, uvs) / (σ(a, uvs) * σ(b, uvs))
+correlation(uvs::UncertainValues, a::Label, b::Label) =
+    covariance(uvs, a, b) / (σ(uvs, a) * σ(uvs, b))
 
 """
     Base.filter(uvs::UncertainValues, labels::Vector{<:Label})::Matrix
@@ -242,7 +241,7 @@ Base.show(io::IO, uvs::UncertainValues) = print(
     "UVS[" *
     join(
         (
-            @sprintf("%s = %-0.3g ± %-0.3g", lbl, value(lbl, uvs), σ(lbl, uvs)) for
+            @sprintf("%s = %-0.3g ± %-0.3g", lbl, value(uvs, lbl), σ(uvs, lbl)) for
             lbl in labels(uvs)
         ),
         ", ",
@@ -257,9 +256,9 @@ function Base.show(io::IO, ::MIME"text/plain", uvs::UncertainValues)
     foreach(l -> print(io, trim(repr(l), 12)), lbls)
     for (r, rl) in enumerate(lbls)
         println(io)
-        print(io, trim("$rl", 10) * @sprintf(" | %-8.3g |", value(rl, uvs)))
+        print(io, trim("$rl", 10) * @sprintf(" | %-8.3g |", value(uvs, rl)))
         print(io, r == length(uvs.labels)[1] / 2 ? "  ±  |" : "     |")
-        foreach(cl -> print(io, @sprintf("   %-8.3g ", covariance(rl, cl, uvs))), lbls)
+        foreach(cl -> print(io, @sprintf("   %-8.3g ", covariance(uvs, rl, cl))), lbls)
         print(io, " |")
     end
 end
@@ -270,7 +269,7 @@ Base.show(io::IO, m::MIME"text/html", uvs::UncertainValues) =
 
 function Base.show(io::IO, ::MIME"text/markdown", uvs::UncertainValues)
     fmt(x) = @sprintf("%0.2e", x)
-    cv(r, c) = r == c ? "($(fmt(σ(r,uvs))))²" : "$(fmt(covariance(r,c,uvs)))"
+    cv(r, c) = r == c ? "($(fmt(σ(uvs, r))))²" : "$(fmt(covariance(uvs,r,c)))"
     esc(ss) = replace(ss, "|" => "\\|")
     ext(ss, l) = ss * repeat(" ", l - length(ss))
     lbls, rows = labels(uvs), []
@@ -278,7 +277,7 @@ function Base.show(io::IO, ::MIME"text/markdown", uvs::UncertainValues)
     for lbl in lbls
         push!(
             rows,
-            [repr(lbl), fmt(value(lbl, uvs)), " ", (cv(lbl, col) for col in lbls)...],
+            [repr(lbl), fmt(value(uvs, lbl)), " ", (cv(lbl, col) for col in lbls)...],
         )
     end
     cl = maximum(length(rows[j][i]) for j in eachindex(rows) for i in eachindex(rows[j]))
@@ -318,7 +317,7 @@ function Base.getindex(uvs::UncertainValues, lbl::Label)::UncertainValue
     return UncertainValue(uvs.values[idx], sqrt(uvs.covariance[idx, idx]))
 end
 
-function Base.isnan(lbl::Label, uvs::UncertainValues)::Bool
+function Base.isnan(uvs::UncertainValues, lbl::Label)::Bool
     idx = uvs.labels[lbl]
     return isnan(uvs.values[idx]) || isnan(uvs.covariance[idx,idx])
 end
@@ -351,12 +350,12 @@ function labels(uvs::UncertainValues)::Vector{<:Label}
 end
 
 """
-    value(lbl::Label, uvs::UncertainValues)
+    value(uvs::UncertainValues, lbl::Label)
 
 The value associate with the Label.
 """
-value(lbl::Label, uvs::UncertainValues) = uvs.values[uvs.labels[lbl]]
-value(lbl::Label, uvs::UncertainValues, default) =
+value(uvs::UncertainValues, lbl::Label) = uvs.values[uvs.labels[lbl]]
+value(uvs::UncertainValues, lbl::Label, default) =
     haskey(uvs.labels, lbl) ? uvs.values[uvs.labels[lbl]] : default
 
 """
@@ -368,26 +367,26 @@ labels(uvs).
 Base.values(uvs::UncertainValues) = uvs.values
 
 """
-   covariance(lbl1::Label, lbl2::Label, uvs::UncertainValues)
+   covariance(uvs::UncertainValues, lbl1::Label, lbl2::Label)
 
 The covariance between the two variables.
 """
-covariance(lbl1::Label, lbl2::Label, uvs::UncertainValues) =
+covariance(uvs::UncertainValues, lbl1::Label, lbl2::Label) =
     uvs.covariance[uvs.labels[lbl1], uvs.labels[lbl2]]
 
-covariance(lbl1::Label, lbl2::Label, uvs::UncertainValues, default) =
+covariance(uvs::UncertainValues, lbl1::Label, lbl2::Label, default) =
     haskey(uvs.labels, lbl1) && haskey(uvs.labels, lbl2) ? #
     uvs.covariance[uvs.labels[lbl1], uvs.labels[lbl2]] :
     default
 
 """
-   variance(lbl::Label, uvs::UncertainValues)
+   variance(uvs::UncertainValues, lbl::Label)
 
 The variance associated with the specified Label.
 """
-variance(lbl::Label, uvs::UncertainValues) =
+variance(uvs::UncertainValues, lbl::Label) =
     max(0.0, uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]])
-variance(lbl::Label, uvs::UncertainValues, default) =
+variance(uvs::UncertainValues, lbl::Label, default) =
     haskey(uvs.labels, lbl) ? uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]] : default
 
 
@@ -397,17 +396,17 @@ function asa( #
     withCovars = true,
 )::DataFrame
     lbls = labels(uvss)
-    df = DataFrame(Variable = map(lbl -> "$lbl", lbls), Values = map(lbl -> value(lbl, uvss), lbls))
+    df = DataFrame(Variable = map(lbl -> "$lbl", lbls), Values = map(lbl -> value(uvss, lbl), lbls))
     if withCovars
         for (i, cl) in enumerate(lbls)
             insertcols!(
                 df,
                 2 + i,
-                Symbol("$cl") => map(rl -> covariance(rl, cl, uvss), lbls),
+                Symbol("$cl") => map(rl -> covariance(uvss, rl, cl), lbls),
             )
         end
     else
-        insertcols!(df, 3, :σ => map(lbl -> σ(lbl, uvss), lbls))
+        insertcols!(df, 3, :σ => map(lbl -> σ(uvss, lbl), lbls))
     end
     return df
 end
@@ -417,7 +416,7 @@ end
 
 The uncertainty associated with specified label (k σ where default k=1)
 """
-uncertainty(lbl::Label, uvs::UncertainValues, k::Float64 = 1.0) = k * σ(lbl, uvs)
+uncertainty(uvs::UncertainValues, lbl::Label, k::Float64 = 1.0) = k * σ(uvs, lbl)
 
 Base.indexin(lbl::Label, uvs::UncertainValues) = uvs.labels[lbl]
 
@@ -480,13 +479,13 @@ function LaTeXStrings.latexstring(uvs::UncertainValues; fmt="%0.3f", mode=:norma
         ],"\n") 
     vals = join([ 
             raw"\begin{vmatrix}", 
-            join([ pre*fmtrfunc(value(lbl,uvs))*post for lbl in lbls ], " \\\\\n"), 
+            join([ pre*fmtrfunc(value(uvs, lbl))*post for lbl in lbls ], " \\\\\n"), 
             raw"\end{vmatrix}" 
         ],"\n") 
     covs = join([
         raw"\begin{vmatrix}", 
         join( [
-            join( [ pre*fmtrfunc(covariance(lbl1, lbl2, uvs))*post for lbl1 in lbls ], " & ") 
+            join( [ pre*fmtrfunc(covariance(uvs, lbl1, lbl2))*post for lbl1 in lbls ], " & ") 
                 for lbl2 in lbls ], " \\\\\n"),
         raw"\end{vmatrix}" ],"\n")
     return latexstring("$ls\n=$vals\n\\pm\n$covs")

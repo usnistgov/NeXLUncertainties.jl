@@ -77,33 +77,33 @@ using Random
     @test isapprox(value(mcres[lg]), value(res[lg]), atol = 0.05 * σ(res[lg]))
 
     @test isapprox(
-        covariance(ld, le, mcres),
-        covariance(ld, le, res),
+        covariance(mcres, ld, le),
+        covariance(res, ld, le),
         atol = 0.05 * σ(res[ld]) * σ(res[le]),
     )
     @test isapprox(
-        covariance(ld, lf, mcres),
-        covariance(ld, lf, res),
+        covariance(mcres, ld, lf),
+        covariance(res, ld, lf),
         atol = 0.05 * σ(res[ld]) * σ(res[lf]),
     )
     @test isapprox(
-        covariance(ld, lg, mcres),
-        covariance(ld, lg, res),
+        covariance(mcres, ld, lg),
+        covariance(res, ld, lg),
         atol = 0.05 * σ(res[ld]) * σ(res[lg]),
     )
     @test isapprox(
-        covariance(le, lf, mcres),
-        covariance(le, lf, res),
+        covariance(mcres, le, lf),
+        covariance(res, le, lf),
         atol = 0.05 * σ(res[le]) * σ(res[lf]),
     )
     @test isapprox(
-        covariance(le, lg, mcres),
-        covariance(le, lg, res),
+        covariance(mcres, le, lg),
+        covariance(res, le, lg),
         atol = 0.05 * σ(res[le]) * σ(res[lg]),
     )
     @test isapprox(
-        covariance(lf, lg, mcres),
-        covariance(lf, lg, res),
+        covariance(mcres, lf, lg),
+        covariance(res, lf, lg),
         atol = 0.05 * σ(res[lf]) * σ(res[lg]),
     )
 end;
