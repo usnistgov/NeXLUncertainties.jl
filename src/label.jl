@@ -16,7 +16,7 @@ struct BasicLabel{T} <: Label
     value::T
     hc::UInt # cache the hash to ensure Dict and Set searches are fast
 
-    BasicLabel(v::T) where {T} = new{T}(v, hash(v, UInt64(0xEA7F00DBADF00D)))
+    BasicLabel(v::T) where {T} = new{T}(v, hash(v, UInt(0xEA7F00DBADF00D)))
 end
 
 label(item::T) where {T} = BasicLabel(item)

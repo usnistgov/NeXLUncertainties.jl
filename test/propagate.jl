@@ -12,7 +12,7 @@ using Random
     g(a, b, c) = 2.3 * a * b + 1.8 * a * c
 
     function NeXLUncertainties.compute(
-        mm::TestMeasurementModel,
+        ::TestMeasurementModel,
         inputs::LabeledValues,
         withJac::Bool,
     )::MMResult
@@ -23,9 +23,9 @@ using Random
         results = [d(a, b, c), e(a, b, c), f(a, b, c), g(a, b, c)]
         if withJac # Compute the Jacobian column-by-column (input-by-input)
             jac = zeros(length(outputs), length(inputs))
-            jac[:, indexin(la, inputs)] = [1.0, 1.0 / a, results[3] / a, 2.3 * b + 1.8 * c]
-            jac[:, indexin(lb, inputs)] = [2.0 * b, 0, results[3] / b, 2.3 * a]
-            jac[:, indexin(lc, inputs)] = [3.0 * c^2, exp(c), results[3] / c, 1.8 * a]
+            jac[:, indexin(inputs, la)] = [1.0, 1.0 / a, results[3] / a, 2.3 * b + 1.8 * c]
+            jac[:, indexin(inputs, lb)] = [2.0 * b, 0, results[3] / b, 2.3 * a]
+            jac[:, indexin(inputs, lc)] = [3.0 * c^2, exp(c), results[3] / c, 1.8 * a]
         else
             jac = missing
         end
@@ -157,9 +157,9 @@ end;
         results = [I / (t * i)]
         jac = withJac ? zeros(Float64, 1, length(inputs)) : missing
         if withJac
-            jac[1, indexin(lI, inputs)] = results[1] / I
-            jac[1, indexin(lt, inputs)] = -results[1] / t
-            jac[1, indexin(li, inputs)] = -results[1] / i
+            jac[1, indexin(inputs, lI)] = results[1] / I
+            jac[1, indexin(inputs, lt)] = -results[1] / t
+            jac[1, indexin(inputs, li)] = -results[1] / i
         end
         return (LabeledValues(labels, results), jac)
     end
@@ -183,12 +183,12 @@ end;
         results = [NIp - ((Rp - Rl) * NIh + (Rh - Rp) * NIl) / (Rh - Rl)]
         jac = withJac ? zeros(Float64, 1, length(inputs)) : missing
         if withJac
-            jac[1, indexin(lNIp, inputs)] = 1.0
-            jac[1, indexin(lNIl, inputs)] = (Rh - Rp) / (Rh - Rl)
-            jac[1, indexin(lNIh, inputs)] = (Rl - Rp) / (Rh - Rl)
-            jac[1, indexin(lRp, inputs)] = (NIl - NIh) / (Rh - Rl)
-            jac[1, indexin(lRl, inputs)] = (NIh - NIl) * (Rh - Rp) / ((Rh - Rl)^2)
-            jac[1, indexin(lRh, inputs)] = (NIl - NIh) * (Rl - Rp) / ((Rh - Rl)^2)
+            jac[1, indexin(inputs, lNIp)] = 1.0
+            jac[1, indexin(inputs, lNIl)] = (Rh - Rp) / (Rh - Rl)
+            jac[1, indexin(inputs, lNIh)] = (Rl - Rp) / (Rh - Rl)
+            jac[1, indexin(inputs, lRp)] = (NIl - NIh) / (Rh - Rl)
+            jac[1, indexin(inputs, lRl)] = (NIh - NIl) * (Rh - Rp) / ((Rh - Rl)^2)
+            jac[1, indexin(inputs, lRh)] = (NIl - NIh) * (Rl - Rp) / ((Rh - Rl)^2)
         end
         return (LabeledValues(labels, results), jac)
     end
@@ -207,8 +207,8 @@ end;
         results = [inputs[lIunk] / inputs[lIstd]]
         jac = withJac ? zeros(Float64, 1, length(inputs)) : missing
         if withJac
-            jac[1, indexin(lIunk, inputs)] = results[1] / inputs[lIunk]
-            jac[1, indexin(lIstd, inputs)] = -results[1] / inputs[lIstd]
+            jac[1, indexin(inputs, lIunk)] = results[1] / inputs[lIunk]
+            jac[1, indexin(inputs, lIstd)] = -results[1] / inputs[lIstd]
         end
         return (LabeledValues(labels, results), jac)
     end

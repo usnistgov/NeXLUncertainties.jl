@@ -42,7 +42,7 @@ function NeXLUncertainties.compute(ss::Series, inputs::LabeledValues, withJac::B
     if withJac
         jac= zeros(1, length(inputs))
         for r in ss.resistors
-            jac[1, indexin(r, inputs)] = 1.0
+            jac[1, indexin(inputs, r)] = 1.0
         end
     else
         jac = nothing
@@ -67,7 +67,7 @@ function NeXLUncertainties.compute(ss::Parallel, inputs::LabeledValues, withJac:
     if withJac
         jac = zeros(1, length(inputs))
         for r in ss.resistors
-            jac[1, indexin(r,inputs)] = (resistance/inputs[r])^2
+            jac[1, indexin(inputs, r)] = (resistance/inputs[r])^2
         end
     end
     return (vals, jac)

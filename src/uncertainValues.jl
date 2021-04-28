@@ -418,7 +418,7 @@ The uncertainty associated with specified label (k σ where default k=1)
 """
 uncertainty(uvs::UncertainValues, lbl::Label, k::Float64 = 1.0) = k * σ(uvs, lbl)
 
-Base.indexin(lbl::Label, uvs::UncertainValues) = uvs.labels[lbl]
+Base.indexin(uvs::UncertainValues, lbl::Label) = uvs.labels[lbl]
 
 """
     labeledvalues(uvs::UncertainValues)
@@ -435,8 +435,8 @@ function labelsByType(types::AbstractVector{DataType}, uvs::UncertainValues)
     mapreduce(ty -> labelsByType(ty, lbls), append!, types)
 end
 
-function extract(labels::AbstractVector{<:Label}, uvss::UncertainValues)::UncertainValues
-    idx = map(l -> indexin(l, uvss), labels) # look it up once...
+function extract(uvss::UncertainValues, labels::AbstractVector{<:Label})::UncertainValues
+    idx = map(l -> indexin(uvss, l), labels) # look it up once...
     vals = Float64[uvss.values[i] for i in idx]
     cov = zeros(length(idx), length(idx))
     for (r, rl) in enumerate(idx)
@@ -448,17 +448,17 @@ function extract(labels::AbstractVector{<:Label}, uvss::UncertainValues)::Uncert
 end
 
 function extract(
-    labeltype::Type{T},
-    uvss::UncertainValues,
+	uvss::UncertainValues,
+    labeltype::Type{T}
 )::UncertainValues where {T<:Label}
-    return extract(labelsByType(labeltype, uvss), uvss)
+    return extract(uvss, labelsByType(labeltype, uvss))
 end
 
 function extract(
+	uvss::UncertainValues,
     labeltypes::AbstractVector{DataType},
-    uvss::UncertainValues,
 )::UncertainValues
-    return extract(labelsByType(labeltypes, uvss), uvss)
+    return extract(uvss, labelsByType(labeltypes, uvss))
 end
 
 """

@@ -25,10 +25,10 @@ function NeXLUncertainties.compute(
     vals = LabeledValues([al, bl], [a, b])
     jac = withJac ? zeros(Float64, length(vals), length(inputs)) : missing
     if withJac
-        jac[indexin(al, vals), indexin(xl, inputs)] = δfaδx(x, y)
-        jac[indexin(al, vals), indexin(yl, inputs)] = δfaδy(x, y)
-        jac[indexin(bl, vals), indexin(xl, inputs)] = δfbδx(x, y)
-        jac[indexin(bl, vals), indexin(yl, inputs)] = δfbδy(x, y)
+        jac[indexin(vals, al), indexin(inputs, xl)] = δfaδx(x, y)
+        jac[indexin(vals, al), indexin(inputs, yl)] = δfaδy(x, y)
+        jac[indexin(vals, bl), indexin(inputs, xl)] = δfbδx(x, y)
+        jac[indexin(vals, bl), indexin(inputs, yl)] = δfbδy(x, y)
     end
     return (vals, jac)
 end

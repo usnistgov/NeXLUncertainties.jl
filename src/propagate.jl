@@ -118,9 +118,9 @@ struct MCSampler
         z = filter(f, labels(inp))
         zeros = LabeledValues(z, Float64[value(inp, lbl) for lbl in z])
         nz = filter(lbl -> !(lbl in z), labels(inp))
-        nzuvs = extract(nz, inp)
+        nzuvs = extract(inp, nz)
         # CSV.write(joinpath(homedir(),"Desktop\\znuvs.csv"), asa(DataFrame,nzuvs))
-        nonzeros = Dict(lbl => indexin(lbl, nzuvs) for lbl in nz)
+        nonzeros = Dict(lbl => indexin(nzuvs, lbl) for lbl in nz)
         mvnorm = MvNormal(nzuvs.values, nzuvs.covariance)
         return new(inp, zeros, nonzeros, mvnorm, rng)
     end
@@ -204,7 +204,7 @@ function compute(mm::MaintainInputs, inputs::LabeledValues, withJac::Bool)::MMRe
         jac = withJac ? zeros(length(mm.labels), length(inputs)) : missing
         if withJac
             for (out, lbl) in enumerate(mm.labels)
-                jac[out, indexin(lbl, inputs)] = 1.0
+                jac[out, indexin(inputs, lbl)] = 1.0
             end
         end
         return (LabeledValues(mm.labels, vals), jac)
@@ -414,7 +414,7 @@ If the input 'mmr' is N functions of M variables and `length(labels)=P` then the
 will be P functions of M variables.
 """
 function Base.filter(labels::AbstractVector{<:Label}, mmr::MMResult)::MMResult
-    indexes = map(lbl -> indexin(lbl, mmr[1]), labels)
+    indexes = map(lbl -> indexin(mmr[1], lbl), labels)
     return (
         LabeledValues(labels(mmr[1])[indexes], values(mmr[1])[indexes]),
         mmr[2][indexes, :],

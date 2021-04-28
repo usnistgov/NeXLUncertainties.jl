@@ -54,9 +54,9 @@ Base.merge(lvs::LabeledValues...) =
 
 Returns the value associated with the specified `Label`.
 """
-value(lv::LabeledValues, lbl::Label)::Float64 = lv.values[indexin(lbl, lv)]
+value(lv::LabeledValues, lbl::Label)::Float64 = lv.values[indexin(lv, lbl)]
 Base.length(lv::LabeledValues) = length(lv.values)
-Base.getindex(lv::LabeledValues, lbl::Label)::Float64 = lv.values[indexin(lbl, lv)]
+Base.getindex(lv::LabeledValues, lbl::Label)::Float64 = lv.values[indexin(lv, lbl)]
 
 function Base.setindex!(lv::LabeledValues, val::Real, lbl::Label)
     @assert !Base.haskey(lv.index, lbl) "$lbl already exists in LabeledValues - $lv"
@@ -65,11 +65,11 @@ function Base.setindex!(lv::LabeledValues, val::Real, lbl::Label)
 end
 
 """
-    indexin(lbl::Label, lv::LabeledValues)::Int
+    indexin(lv::LabeledValues, lbl::Label)::Int
 
 Returns the index associated with the specified `Label`.
 """
-Base.indexin(lbl::Label, lv::LabeledValues)::Int = lv.index[lbl]
+Base.indexin(lv::LabeledValues, lbl::Label)::Int = lv.index[lbl]
 
 Base.haskey(lv::LabeledValues, lbl::Label) = haskey(lv.index, lbl)
 Base.keys(lv::LabeledValues) = keys(lv.index)

@@ -112,18 +112,18 @@ function NeXLUncertainties.compute(mm::TestMeasurementModel, inputs::LabeledValu
     # Build the `LabeledValues` to represent the result values
     outputs = LabeledValues(outlabels, results)
     # Note: The order of the label in the constructor decides their index
-    @assert all(indexin(outlabels[i],outputs)==i for i in eachindex(outlabels))
+    @assert all(indexin(outputs, outlabels[i])==i for i in eachindex(outlabels))
     if withJac # Only compute the Jacobian if `withJac=true`
         # Compute the Jacobian column-by-column (input-by-input)
         jac = zeros(length(outputs), length(inputs))
         # Being very explicit...
-        jac[indexin(label("D"),outputs), indexin(la, inputs)] = 1 # D[a+b^2+c^3,a]
-        jac[indexin(label("E"),outputs), indexin(la, inputs)] = 1/a # D[log(a)+exp(c), a]
-        jac[indexin(label("F"),outputs), indexin(la, inputs)] = 3.2*b*c # D[3.2*a*b*c, a]
-        jac[indexin(label("G"),outputs), indexin(la, inputs)] = mm.k * b + 1.8 * c # D[mm.k * a * b + 1.8 * a * c, a]
+        jac[indexin(outputs, label("D")), indexin(inputs, la)] = 1 # D[a+b^2+c^3,a]
+        jac[indexin(outputs, label("E")), indexin(inputs, la)] = 1/a # D[log(a)+exp(c), a]
+        jac[indexin(outputs, label("F")), indexin(inputs, la)] = 3.2*b*c # D[3.2*a*b*c, a]
+        jac[indexin(outputs, label("G")), indexin(inputs, la)] = mm.k * b + 1.8 * c # D[mm.k * a * b + 1.8 * a * c, a]
         # Or relying on the order implied by `outlabels` used to construct `outputs`
-        jac[:, indexin(lb, inputs)] .= ( 2.0 * b, 0, results[3] / b, mm.k * a )
-        jac[:, indexin(lc, inputs)] .= ( 3.0 * c^2, exp(c), results[3] / c, 1.8 * a )
+        jac[:, indexin(inputs, lb)] .= ( 2.0 * b, 0, results[3] / b, mm.k * a )
+        jac[:, indexin(inputs, lc)] .= ( 3.0 * c^2, exp(c), results[3] / c, 1.8 * a )
     else
         jac = missing
     end

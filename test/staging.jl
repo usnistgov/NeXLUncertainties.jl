@@ -44,9 +44,9 @@ function NeXLUncertainties.compute(ni::NormI, inputs::LabeledValues, withJac::Bo
     results = [I / (t * i)]
     jac = withJac ? zeros(Float64, 1, length(inputs)) : missing
     if withJac
-        jac[1, indexin(lI, inputs)] = results[1] / I
-        jac[1, indexin(lt, inputs)] = -results[1] / t
-        jac[1, indexin(li, inputs)] = -results[1] / i
+        jac[1, indexin(inputs, lI)] = results[1] / I
+        jac[1, indexin(inputs, lt)] = -results[1] / t
+        jac[1, indexin(inputs, li)] = -results[1] / i
     end
     return (LabeledValues(labels, results), jac)
 end
@@ -66,12 +66,12 @@ function NeXLUncertainties.compute(ic::IChar, inputs::LabeledValues, withJac::Bo
     results = [NIp - ((Rp - Rl) * NIh + (Rh - Rp) * NIl) / (Rh - Rl)]
     jac = withJac ? zeros(Float64, 1, length(inputs)) : missing
     if withJac
-        jac[1, indexin(lNIp, inputs)] = 1.0
-        jac[1, indexin(lNIl, inputs)] = (Rh - Rp) / (Rh - Rl)
-        jac[1, indexin(lNIh, inputs)] = (Rl - Rp) / (Rh - Rl)
-        jac[1, indexin(lRp, inputs)] = (NIl - NIh) / (Rh - Rl)
-        jac[1, indexin(lRl, inputs)] = (NIh - NIl) * (Rh - Rp) / ((Rh - Rl)^2)
-        jac[1, indexin(lRh, inputs)] = (NIl - NIh) * (Rl - Rp) / ((Rh - Rl)^2)
+        jac[1, indexin(inputs, lNIp)] = 1.0
+        jac[1, indexin(inputs, lNIl)] = (Rh - Rp) / (Rh - Rl)
+        jac[1, indexin(inputs, lNIh)] = (Rl - Rp) / (Rh - Rl)
+        jac[1, indexin(inputs, lRp)] = (NIl - NIh) / (Rh - Rl)
+        jac[1, indexin(inputs, lRl)] = (NIh - NIl) * (Rh - Rp) / ((Rh - Rl)^2)
+        jac[1, indexin(inputs, lRh)] = (NIl - NIh) * (Rl - Rp) / ((Rh - Rl)^2)
     end
     return (LabeledValues(labels, results), jac)
 end
@@ -86,8 +86,8 @@ function NeXLUncertainties.compute(kr::KRatioModel, inputs::LabeledValues, withJ
     results = [inputs[lIunk] / inputs[lIstd]]
     jac = withJac ? zeros(Float64, 1, length(inputs)) : missing
     if withJac
-        jac[1, indexin(lIunk, inputs)] = results[1] / inputs[lIunk]
-        jac[1, indexin(lIstd, inputs)] = -results[1] / inputs[lIstd]
+        jac[1, indexin(inputs, lIunk)] = results[1] / inputs[lIunk]
+        jac[1, indexin(inputs, lIstd)] = -results[1] / inputs[lIstd]
     end
     return (LabeledValues(labels, results), jac)
 end
