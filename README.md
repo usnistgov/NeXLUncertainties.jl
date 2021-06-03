@@ -9,6 +9,16 @@
 [docs-stable-url]: https://pages.nist.gov/NeXLUncertainties.jl
 [travis-img]: https://travis-ci.com/usnistgov/NeXLUncertainties.jl.svg?branch=master
 [travis-url]: https://travis-ci.com/usnistgov/NeXLUncertainties.jl
+    
+Install NeXLUncertainties using the Julia package manager
+
+    > ]add NeXLUncertainties
+
+or
+
+    > using Pkg
+    > Pkg.add("NeXLUncertainties")
+
 
 NeXLUncertainties implements propagation of uncertainties for multivariate measurement models.  A multivariate measurement model represents a class of models in which many input parameters (measured values or model parameters) are mapped into more than one output parameter.  Calculating these kinds of models using a univariate measurement model ignores correlations in the output parameters that result from sharing the same input parameters.
 
