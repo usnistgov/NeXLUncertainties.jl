@@ -7,16 +7,7 @@ export poisson # Creates an UncertainValue from a count statistic limited intege
 export multiply # multiply UncertainValue structs
 export divide # divide UncertainValue structs
 export add
-export exp # exponential function (e^X)
-export log # log function
-export sin # sine function
-export cos # cosine function
-export tan # tangent function
-export sqrt # square root function
-export power # power function (A^b)
 export variance # σ^2
-export isequal # Check UncertainValue structs for equality
-export approx # Check UncertainValue structs for approximate quality
 export equivalent # Check whether two UncertainValue are equivalent values
 export uncertainty # k-σ uncertainty
 export σ # Sigma
