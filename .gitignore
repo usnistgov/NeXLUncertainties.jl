@@ -3,6 +3,7 @@
 *.jl.mem
 /docs/build/
 /docs/src/gettingstarted.md
+/docs/src/resistor*.*
 /docs/Manifest.toml
 /weave/*.html
 /weave/jl_*

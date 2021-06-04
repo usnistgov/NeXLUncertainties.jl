@@ -351,12 +351,14 @@ end
 
 """
     value(uvs::UncertainValues, lbl::Label)
+    value(uvs::UncertainValues, lbl::Label, defValue)
 
-The value associate with the Label.
+The value associate with the Label. The first implementation throws an exception if `lbl` is not present
+while the second implementation returns `defValue`
 """
 value(uvs::UncertainValues, lbl::Label) = uvs.values[uvs.labels[lbl]]
-value(uvs::UncertainValues, lbl::Label, default) =
-    haskey(uvs.labels, lbl) ? uvs.values[uvs.labels[lbl]] : default
+value(uvs::UncertainValues, lbl::Label, defValue) =
+    haskey(uvs.labels, lbl) ? uvs.values[uvs.labels[lbl]] : defValue
 
 """
     values(uvs::UncertainValues)::Vector{Float64}

@@ -115,7 +115,7 @@ B          | 4.5      |     |   0.001       0.004       0         |
 C          | 5.6      |     |   0           0           0.009     |
 julia> u1[nl"B"]
 4.5 ± 0.063
-julia> covariance(u1, nl"A",nl"B")
+julia> covariance(u1, nl"A", nl"B")
 0.001
 julia> value(u1, nl"A")
 3.4
@@ -128,7 +128,7 @@ Implementations of the `MeasurementModel` abstract type provide the mechanism by
 Types implementing the `MeasurementModel` type are responsible for implementing one method:
 
 ```julia
-compute(mm::YourMeasurementModel, inputs::LabeledValues, withJac::Boolean)::MMResult
+julia> compute(mm::YourMeasurementModel, inputs::LabeledValues, withJac::Boolean)::MMResult
 ```
 where
 ```julia
