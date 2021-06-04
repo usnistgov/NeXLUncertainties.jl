@@ -35,7 +35,7 @@ struct LabeledValues
     end
 end
 
-Base.eachindex(lv::LabeledValues) = eachindex(values)
+Base.eachindex(lv::LabeledValues) = eachindex(lv.values)
 
 Base.show(io::IO, lv::LabeledValues) = print(
     io,
@@ -55,6 +55,7 @@ Base.merge(lvs::LabeledValues...) =
 Returns the value associated with the specified `Label`.
 """
 value(lv::LabeledValues, lbl::Label)::Float64 = lv.values[indexin(lv, lbl)]
+
 Base.length(lv::LabeledValues) = length(lv.values)
 Base.getindex(lv::LabeledValues, lbl::Label)::Float64 = lv.values[indexin(lv, lbl)]
 

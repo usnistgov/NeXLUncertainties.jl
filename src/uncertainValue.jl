@@ -333,7 +333,7 @@ function Base.parse(::Type{UncertainValue}, str::AbstractString)::UncertainValue
         val = parse(Float64, sp[1])
         sigma = length(sp) >= 2 ? parse(Float64, sp[2]) : 0.0
     else
-        error("Unable to parse " + str + " as an uncertain value.")
+        error("Unable to parse " + str + " as an UncertainValue.")
     end
     UncertainValue(val, sigma)
 end
