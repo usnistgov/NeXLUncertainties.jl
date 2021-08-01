@@ -57,6 +57,10 @@ Returns the value associated with the specified `Label`.
 value(lv::LabeledValues, lbl::Label)::Float64 = lv.values[indexin(lv, lbl)]
 Base.length(lv::LabeledValues) = length(lv.values)
 Base.getindex(lv::LabeledValues, lbl::Label)::Float64 = lv.values[indexin(lv, lbl)]
+function Base.get(lv::LabeledValues, lbl::Label, def)
+    idx = get(lv.index, lbl, nothing)
+    return isnothing(idx) ? def : lv.values[idx]
+end
 
 function Base.setindex!(lv::LabeledValues, val::Real, lbl::Label)
     @assert !Base.haskey(lv.index, lbl) "$lbl already exists in LabeledValues - $lv"
