@@ -1,9 +1,8 @@
+
 """
 `Label` is the root abstract type used to provide unique identifiers for variables within
 `UncertainValues` and `LabeledValues`. See [BasicLabel]
 """
-
-
 abstract type Label end
 
 
@@ -33,8 +32,8 @@ Base.hash(bl::BasicLabel, h::UInt) = hash(bl.hc, h)
 
 
 """
-labelsByType(ty::Type{<:Label}, labels::AbstractVector{<:Label})
-labelsByType(types::AbstractVector{DataType}, labels::AbstractVector{<:Label})
+    labelsByType(ty::Type{<:Label}, labels::AbstractVector{<:Label})
+    labelsByType(types::AbstractVector{DataType}, labels::AbstractVector{<:Label})
 
 Extracts all of a specific type of `Label` from a list of `Label`s. The second version
 extracts multiple different types in a single call.

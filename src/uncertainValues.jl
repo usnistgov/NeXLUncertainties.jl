@@ -71,7 +71,15 @@ struct UncertainValues
         covar::AbstractMatrix{Float64},
     ) = checkUVS!(labels, values, covar) ? new(labels, values, covar) : error("???")
 end
+"""
+    uvs(labels::AbstractVector{<:Label}, values::AbstractVector{Float64}, covar::AbstractMatrix{Float64})
+    uvs(labels::AbstractVector{<:Label}, values::AbstractVector{Float64}, vars::AbstractVector{Float64})
+    uvs(values::Pair{<:Label,UncertainValue}...)
+    uvs(value::Pair{<:Label,UncertainValue})
+    uvs(values::Dict{<:Label,UncertainValue})
 
+Various methods for constructing `UncertainValues` structures from varying types of inputs.
+"""
 function uvs(
     labels::AbstractVector{<:Label},
     values::AbstractVector{Float64},
@@ -308,9 +316,9 @@ A alphabetically sorted list of the labels. Warning this can be slow.  Use keys(
 want just a unordered set of labels.
 """
 sortedlabels(uvs::UncertainValues) =
-    sort([Base.keys(uvs.labels)...], lt = (l, m) -> isless(repr(l), repr(m)))
+    sort([keys(uvs.labels)...], lt = (l, m) -> isless(repr(l), repr(m)))
 
-Base.keys(uvs::UncertainValues) = Base.keys(uvs.labels)
+Base.keys(uvs::UncertainValues) = keys(uvs.labels)
 
 function Base.getindex(uvs::UncertainValues, lbl::Label)::UncertainValue
     idx = uvs.labels[lbl]
@@ -333,7 +341,7 @@ end
 
 Base.length(uvs::UncertainValues) = length(uvs.labels)
 
-eachlabel(uvs::UncertainValues) = Base.keys(uvs.labels)
+eachlabel(uvs::UncertainValues) = keys(uvs.labels)
 
 """
     labels(uvs::UncertainValues)::Vector{<:Label}
@@ -383,6 +391,7 @@ covariance(uvs::UncertainValues, lbl1::Label, lbl2::Label, default) =
 
 """
    variance(uvs::UncertainValues, lbl::Label)
+   variance(uvs::UncertainValues, lbl::Label, default)
 
 The variance associated with the specified Label.
 """
@@ -436,6 +445,15 @@ function labelsByType(types::AbstractVector{DataType}, uvs::UncertainValues)
     lbls = labels(uvs)
     mapreduce(ty -> labelsByType(ty, lbls), append!, types)
 end
+
+
+"""
+    extract(uvss::UncertainValues, labels::AbstractVector{<:Label})::UncertainValues
+    extract(uvss::UncertainValues, labeltype::Type{T})::UncertainValues where {T<:Label}
+    extract(uvss::UncertainValues, labeltypes::AbstractVector{DataType})::UncertainValues
+
+Construct an `UncertainValues` datum containing only the specified labels/labeltype(s).
+"""
 
 function extract(uvss::UncertainValues, labels::AbstractVector{<:Label})::UncertainValues
     idx = map(l -> indexin(uvss, l), labels) # look it up once...
