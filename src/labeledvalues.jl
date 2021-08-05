@@ -66,7 +66,7 @@ end
 function Base.setindex!(lv::LabeledValues, val::Real, lbl::Label)
     @assert !Base.haskey(lv.index, lbl) "$lbl already exists in LabeledValues - $lv"
     push!(lv.values, val)
-    index[lbl] = length(values) + 1
+    lv.index[lbl] = length(lv.values)
 end
 
 """
@@ -95,18 +95,11 @@ end
 """
     values(lv::LabeledValues)::Vector{Float64}
 
-A copy `Vector` of the values in order.
+A copy `Vector` of the values in the same order as `labels(lv)`.
 """
 Base.values(lv::LabeledValues)::Vector{Float64} = copy(lv.values)
 
 """
-`asa(::DataFrame, lv::LabeledValues)` extracts a `LabeledValues` object into a `DataFrame` in Name and Value columns.
+`asa(::Type{DataFrame}, lv::LabeledValues)` extracts a `LabeledValues` object into a `DataFrame` in Label and Value columns.
 """
-function asa(::DataFrame, lv::LabeledValues)
-    name, value = String[], Float64[]
-    for lbl in labels(lv)
-        push!(name, repr(lbl))
-        push!(value, lv[lbl])
-    end
-    return DataFrame(Name = name, Value = value)
-end
+asa(::Type{DataFrame}, lv::LabeledValues) = DataFrame( Label = labels(lv), Value = values(lv))
