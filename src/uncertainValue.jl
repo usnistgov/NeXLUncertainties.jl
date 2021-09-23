@@ -329,12 +329,8 @@ equivalent(A::UncertainValue, B::UncertainValue, k = 1.0) =
 
 function Base.parse(::Type{UncertainValue}, str::AbstractString)::UncertainValue
     sp = split(str, r"(?:\+\-|\-\+|±)")
-    if length(sp) >= 1
-        val = parse(Float64, sp[1])
-        sigma = length(sp) >= 2 ? parse(Float64, sp[2]) : 0.0
-    else
-        error("Unable to parse " + str + " as an UncertainValue.")
-    end
+    val = parse(Float64, sp[1])
+    sigma = length(sp) == 2 ? parse(Float64, sp[2]) : 0.0
     UncertainValue(val, sigma)
 end
 
