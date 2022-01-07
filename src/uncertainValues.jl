@@ -16,7 +16,7 @@ equal they are set equal and when the correlation coefficient is slightly outsid
 [-1,1], it is restricted to within these bounds. Thus the input matrix can be
 modified, in ways that are probably benign, by this "check" function.
 """
-function checkcovariance!(cov::AbstractMatrix{Float64}, tol = 1.0e-6)::Bool
+function checkcovariance!(cov::AbstractMatrix{T}, tol = convert(T,1.0e-6))::Bool where { T<: AbstractFloat }
     sz = size(cov)
     if length(sz) ≠ 2
         error("The covariance must be a matrix.")
@@ -25,7 +25,7 @@ function checkcovariance!(cov::AbstractMatrix{Float64}, tol = 1.0e-6)::Bool
         error("The covariance matrix must be square.")
     end
     for rc = 1:sz[1]
-        if cov[rc, rc] < 0.0
+        if cov[rc, rc] < zero(T)
             error("The diagonal elements must all be non-negative. -> ", cov[rc, rc])
         end
     end
@@ -40,14 +40,14 @@ function checkcovariance!(cov::AbstractMatrix{Float64}, tol = 1.0e-6)::Bool
     for r = 1:sz[1]
         for c = 1:r-1
             cc = cov[r, c] / sqrt(cov[r, r] * cov[c, c])
-            if abs(cc) > 1.0 + 1.0e-12
+            if abs(cc) > one(T) + convert(T,1.0e-6)
                 error(
                     "The variances must have a correlation coefficient between -1.0 and 1.0 -> ",
                     cc,
                 )
             end
-            if abs(cc) > 1.0
-                cc = max(-1.0, min(1.0, cc))
+            if abs(cc) > one(T)
+                cc = max(-one(T), min(one(T), cc))
                 cov[r, c] = (cov[c, r] = cc * sqrt(cov[r, r] * cov[c, c]))
             end
         end
@@ -72,8 +72,8 @@ struct UncertainValues
     ) = checkUVS!(labels, values, covar) ? new(labels, values, covar) : error("???")
 end
 """
-    uvs(labels::AbstractVector{<:Label}, values::AbstractVector{Float64}, covar::AbstractMatrix{Float64})
-    uvs(labels::AbstractVector{<:Label}, values::AbstractVector{Float64}, vars::AbstractVector{Float64})
+    uvs(labels::AbstractVector{<:Label}, values::AbstractVector{T}, covar::AbstractMatrix{T})  where { T <: Real }
+    uvs(labels::AbstractVector{<:Label}, values::AbstractVector{T}, vars::AbstractVector{T}) where { T <: Real }
     uvs(values::Pair{<:Label,UncertainValue}...)
     uvs(value::Pair{<:Label,UncertainValue})
     uvs(values::Dict{<:Label,UncertainValue})
@@ -82,27 +82,27 @@ Various methods for constructing `UncertainValues` structures from varying types
 """
 function uvs(
     labels::AbstractVector{<:Label},
-    values::AbstractVector{Float64},
-    covar::AbstractMatrix{Float64},
-)
+    values::AbstractVector{T},
+    covar::AbstractMatrix{T},
+) where { T<: Real }
     @assert length(labels) == length(values)
     @assert length(labels) == size(covar, 1)
     @assert length(labels) == size(covar, 2)
     return UncertainValues(
         Dict{Label,Int}(l => i for (i, l) in enumerate(labels)),
-        values,
-        covar,
+        Float64.(values),
+        Float64.(covar)
     )
 end
 
 function uvs(
     labels::AbstractVector{<:Label},
-    values::AbstractVector{Float64},
-    vars::AbstractVector{Float64},
-)
+    values::AbstractVector{T},
+    vars::AbstractVector{T},
+) where { T <: Real }
     @assert length(labels) == length(values)
     @assert length(labels) == length(vars)
-    return uvs(labels, values, diagm(vars))
+    return uvs(labels, Float64.(values), diagm(Float64.(vars)))
 end
 
 uvs(values::Pair{<:Label,UncertainValue}...) = uvs(Dict(values))
@@ -189,10 +189,10 @@ function Base.filter(uvs::UncertainValues, labels::Vector{<:Label})::Matrix
     return m
 end
 
-Base.:*(aa::AbstractMatrix{Float64}, uvs::UncertainValues) =
+Base.:*(aa::AbstractMatrix{T}, uvs::UncertainValues) where { T <: AbstractFloat } =
     UncertainValues(uvs.labels, aa * uvs.values, aa * uvs.covariance * transpose(aa))
 
-Base.:*(aa::Diagonal{Float64}, uvs::UncertainValues) =
+Base.:*(aa::Diagonal{T}, uvs::UncertainValues) where { T <: AbstractFloat } =
     UncertainValues(uvs.labels, aa * uvs.values, aa * uvs.covariance * aa)
 
 
