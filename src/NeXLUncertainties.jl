@@ -22,6 +22,7 @@ export @nl_str # Shortcut to create a label from a string
 # Apply labels to the values in an array
 include("labeledvalues.jl")
 export LabeledValues
+export flatten, unflatten
 
 include("uncertainValues.jl")
 export UncertainValues # An array of values with covariances
