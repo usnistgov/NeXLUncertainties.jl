@@ -63,8 +63,8 @@ the uncertainty relationships between the variables.
 """
 struct UncertainValues
     labels::Dict{<:Label,Int}
-    values::AbstractVector{Float64}
-    covariance::AbstractMatrix{Float64}
+    values::Vector{Float64}
+    covariance::Matrix{Float64}
     UncertainValues(
         labels::Dict{<:Label,Int},
         values::AbstractVector{Float64},
@@ -364,8 +364,8 @@ end
 The value associate with the Label. The first implementation throws an exception if `lbl` is not present
 while the second implementation returns `defValue`
 """
-value(uvs::UncertainValues, lbl::Label) = uvs.values[uvs.labels[lbl]]
-value(uvs::UncertainValues, lbl::Label, defValue) =
+value(uvs::UncertainValues, lbl::Label)::Float64 = uvs.values[uvs.labels[lbl]]
+value(uvs::UncertainValues, lbl::Label, defValue::Float64)::Float64 =
     haskey(uvs.labels, lbl) ? uvs.values[uvs.labels[lbl]] : defValue
 
 """
