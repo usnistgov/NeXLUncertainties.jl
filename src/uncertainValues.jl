@@ -63,8 +63,8 @@ the uncertainty relationships between the variables.
 """
 struct UncertainValues
     labels::Dict{<:Label,Int}
-    values::AbstractVector{Float64}
-    covariance::AbstractMatrix{Float64}
+    values::Vector{Float64}
+    covariance::Matrix{Float64}
     UncertainValues(
         labels::Dict{<:Label,Int},
         values::AbstractVector{Float64},
@@ -210,34 +210,30 @@ Combines the disjoint UncertainValues in uvss into a single UncertainValues obje
 """
 function Base.cat(uvss::UncertainValues...)::UncertainValues
     function combinelabels(us::UncertainValues...) # Maintains order as union doesn't
-        res = Label[]
+        res = Dict{Label,Int}()
+        i = 0
         for u in us
             for lu in labels(u)
-                if !(lu in res)
-                    push!(res, lu)
-                else
-                    throw(
-                        ErrorException(
-                            "Unable to combine UncertainValues with duplicate labels.",
-                        ),
-                    )
+                if haskey(res, lu)
+                    @error "Unable to combine UncertainValues with a duplicated label - $lu"
                 end
+                res[lu] = (i+=1)
             end
         end
         return res
     end
-    all = Dict{Label,Int}(lbl => i for (i, lbl) in enumerate(combinelabels(uvss...)))
+    all = combinelabels(uvss...)
     # @assert length(all) == sum(map(uvs -> length(uvs.labels), uvss)) "One or more labels were duplicated in cat(...)"
     len = length(all)
     values, covar = zeros(Float64, len), zeros(Float64, len, len)
     # Precompute the indexes for speed ( index in all, index in uvs)
     for uvs in uvss
         # Map  label indices into new label indices
-        idx = collect((all[lbl], rc) for (lbl, rc) in uvs.labels)
-        for (newR, oldR) in idx
+        for (rlbl, oldR) in uvs.labels
+            newR = all[rlbl]
             values[newR] = uvs.values[oldR]
-            for (newC, oldC) in idx
-                covar[newR, newC] = uvs.covariance[oldR, oldC]
+            for (clbl, oldC) in uvs.labels
+                covar[newR, all[clbl]] = uvs.covariance[oldR, oldC]
             end
         end
     end
@@ -364,8 +360,10 @@ end
 The value associate with the Label. The first implementation throws an exception if `lbl` is not present
 while the second implementation returns `defValue`
 """
-value(uvs::UncertainValues, lbl::Label) = uvs.values[uvs.labels[lbl]]
-value(uvs::UncertainValues, lbl::Label, defValue) =
+value(uvs::UncertainValues, lbl::Label)::Float64 = uvs.values[uvs.labels[lbl]]
+value(uvs::UncertainValues, lbl::Label, defValue::Float64)::Float64 =
+    haskey(uvs.labels, lbl) ? uvs.values[uvs.labels[lbl]] : defValue
+value(uvs::UncertainValues, lbl::Label, defValue::Any) =
     haskey(uvs.labels, lbl) ? uvs.values[uvs.labels[lbl]] : defValue
 
 """
