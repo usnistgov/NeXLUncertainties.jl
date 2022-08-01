@@ -1,6 +1,5 @@
 using Printf
 using Statistics
-using LaTeXStrings
 
 """
     UncertainValue
@@ -334,7 +333,7 @@ function Base.parse(::Type{UncertainValue}, str::AbstractString)::UncertainValue
     UncertainValue(val, sigma)
 end
 
-function _showstr(uv::UncertainValue, pm = "±")
+function _showstr(uv::UncertainValue, pm::AbstractString)
     smin = max(uv.sigma, 1.0e-6 * abs(uv.value), 1.0e-10)
     ls, lr = map(v -> floor(Int, log10(abs(v))), ( smin, max(1.0e-10, uv.value / smin)))
     return if (ls < -4) || (ls > 6)
@@ -366,27 +365,4 @@ function _showstr(uv::UncertainValue, pm = "±")
     end
 end
 
-Base.show(io::IO, uv::UncertainValue) = print(io, _showstr(uv))
-
-"""
-    LaTeXStrings.latexstring(uv::UncertainValue; fmt=nothing, mode=:normal[|:siunitx])::LaTeXString
-
-Converts an `UncertainValue` to a `LaTeXString` in a reasonable manner.
-`mode=:siunitx" requires `\\usepackage{siunitx}` which defines `\\num{}`.
-`fmt` is a C-style format string like "%0.2f" or nothing for an "intelligent" default.
-"""
-function LaTeXStrings.latexstring(
-    uv::UncertainValue;
-    fmt = nothing,
-    mode = :normal,
-)::LaTeXString
-    pre, post = (mode == :siunitx ? ("\\num{", "}") : ("", ""))
-    if isnothing(fmt)
-        return latexstring(pre * _showstr(uv, raw"\pm") * post)
-    else
-        fmtrfunc = generate_formatter(fmt)
-        return latexstring(
-            pre * fmtrfunc(value(uv)) * " \\pm " * fmtrfunc(uncertainty(uv)) * post,
-        )
-    end
-end
+Base.show(io::IO, uv::UncertainValue) = print(io, _showstr(uv, "±"))

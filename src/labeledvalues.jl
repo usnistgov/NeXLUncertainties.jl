@@ -1,5 +1,3 @@
-using DataFrames
-
 """
     LabeledValues
 
@@ -98,11 +96,6 @@ end
 A copy `Vector` of the values in the same order as `labels(lv)`.
 """
 Base.values(lv::LabeledValues)::Vector{Float64} = copy(lv.values)
-
-"""
-`asa(::Type{DataFrame}, lv::LabeledValues)` extracts a `LabeledValues` object into a `DataFrame` in Label and Value columns.
-"""
-asa(::Type{DataFrame}, lv::LabeledValues) = DataFrame( Label = labels(lv), Value = values(lv))
 
 
 """

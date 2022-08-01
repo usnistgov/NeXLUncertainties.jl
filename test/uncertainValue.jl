@@ -2,9 +2,7 @@ using Test
 using NeXLUncertainties
 using LaTeXStrings
 
-
 @testset "Uncertainty" begin
-
     uv1, uv2, uv3 =
         UncertainValue(1.0, 0.1), UncertainValue(0.8, 0.001), UncertainValue(-0.9, 0.05)
 

@@ -119,7 +119,6 @@ struct MCSampler
         zeros = LabeledValues(z, Float64[value(inp, lbl) for lbl in z])
         nz = filter(lbl -> !(lbl in z), labels(inp))
         nzuvs = extract(inp, nz)
-        # CSV.write(joinpath(homedir(),"Desktop\\znuvs.csv"), asa(DataFrame,nzuvs))
         nonzeros = Dict(lbl => indexin(nzuvs, lbl) for lbl in nz)
         mvnorm = MvNormal(nzuvs.values, nzuvs.covariance)
         return new(inp, zeros, nonzeros, mvnorm, rng)

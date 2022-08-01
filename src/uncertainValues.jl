@@ -2,8 +2,6 @@
 # the formalism in ISO GUM (JCGM 100 and JCGM 102).
 using Printf
 using LinearAlgebra
-using DataFrames
-using Formatting
 
 """
     checkcovariance!(cov::AbstractMatrix)
@@ -267,23 +265,33 @@ function Base.show(io::IO, ::MIME"text/plain", uvs::UncertainValues)
     end
 end
 
-Base.show(io::IO, m::MIME"text/html", uvs::UncertainValues) =
-# We piggyback off DataFrames here because generating a good looking table isn't easy...
-    show(io, m, asa(DataFrame, uvs), summary = false, eltypes = false)
+function Base.show(io::IO, m::MIME"text/html", uvs::UncertainValues)
+    ff(x) = @sprintf("%0.2e", x)
+    cv(r, c) = r == c ? "($(ff(σ(uvs, r))))<sup>2</sup>" : "$(ff(covariance(uvs,r,c)))"
+    esc(ss) = replace(ss, "|" => "\\|")
+    ext(ss, l) = ss * repeat(" ", l - length(ss))
+    lbls = labels(uvs)
+    rows = [[repr(lbl), ff(value(uvs, lbl)), " ", (cv(lbl, col) for col in lbls)...] for lbl in lbls]
+    cl = maximum(length(rows[j][i]) for j in eachindex(rows) for i in eachindex(rows[j]))
+    rows[length(rows)÷2+1][3] = ext("±", cl)
+    print(io, "<table>\n"*
+    "\t<tr><th>Label</th><th>Value</th>"*join(("<th>$l</th>" for l in repr.(lbls)),"")*"</tr>\n"*
+    join(
+        ( "\t<tr>"* join(("<td>$(strip(c))</td>" for c in row),"")*"</tr>\n" for row in rows ),
+        ""
+    )*"</table>")
+end
 
 function Base.show(io::IO, ::MIME"text/markdown", uvs::UncertainValues)
     fmt(x) = @sprintf("%0.2e", x)
     cv(r, c) = r == c ? "($(fmt(σ(uvs, r))))²" : "$(fmt(covariance(uvs,r,c)))"
     esc(ss) = replace(ss, "|" => "\\|")
     ext(ss, l) = ss * repeat(" ", l - length(ss))
-    lbls, rows = labels(uvs), []
-    push!(rows, ["Labels", "Values", "", repr.(lbls)...])
-    for lbl in lbls
-        push!(
-            rows,
-            [repr(lbl), fmt(value(uvs, lbl)), " ", (cv(lbl, col) for col in lbls)...],
-        )
-    end
+    lbls = labels(uvs)
+    rows = Vector{String}[
+        String["Label", "Value", "", repr.(lbls)...],
+        ( [repr(lbl), fmt(value(uvs, lbl)), " ", (cv(lbl, col) for col in lbls)...] for lbl in lbls )...
+    ]
     cl = maximum(length(rows[j][i]) for j in eachindex(rows) for i in eachindex(rows[j]))
     insert!(
         rows,
@@ -399,27 +407,6 @@ variance(uvs::UncertainValues, lbl::Label, default) =
     haskey(uvs.labels, lbl) ? uvs.covariance[uvs.labels[lbl], uvs.labels[lbl]] : default
 
 
-function asa( #
-    ::Type{DataFrame},
-    uvss::UncertainValues,
-    withCovars = true,
-)::DataFrame
-    lbls = labels(uvss)
-    df = DataFrame(Variable = map(lbl -> "$lbl", lbls), Values = map(lbl -> value(uvss, lbl), lbls))
-    if withCovars
-        for (i, cl) in enumerate(lbls)
-            insertcols!(
-                df,
-                2 + i,
-                Symbol("$cl") => map(rl -> covariance(uvss, rl, cl), lbls),
-            )
-        end
-    else
-        insertcols!(df, 3, :σ => map(lbl -> σ(uvss, lbl), lbls))
-    end
-    return df
-end
-
 """
     uncertainty(lbl::Label, uvs::UncertainValues, k::Float64=1.0)
 
@@ -477,34 +464,4 @@ function extract(
     labeltypes::AbstractVector{DataType},
 )::UncertainValues
     return extract(uvss, labelsByType(labeltypes, uvss))
-end
-
-"""
-
-    LaTeXStrings.latexstring(uvs::UncertainValues; fmt="%0.3f", mode=:normal[|:siunutx])::LaTeXString
-
-Formats a `UncertainValues` as a LaTeXString (`mode=:siunitx` uses `\\num{}` from the siunitx package.)
-Also requires the amsmath package for `vmatrix`
-"""
-function LaTeXStrings.latexstring(uvs::UncertainValues; fmt="%0.3f", mode=:normal)::LaTeXString
-    fmtrfunc = generate_formatter( fmt )
-    lbls = labels(uvs)
-    pre, post = ( mode == :siunitx ? ( raw"\num{", raw"}" ) : ( "", "" ) )
-    ls = join([ 
-            raw"\begin{vmatrix}", 
-            join([ repr(lbl) for lbl in lbls ], " \\\\\n"), 
-            raw"\end{vmatrix}" 
-        ],"\n") 
-    vals = join([ 
-            raw"\begin{vmatrix}", 
-            join([ pre*fmtrfunc(value(uvs, lbl))*post for lbl in lbls ], " \\\\\n"), 
-            raw"\end{vmatrix}" 
-        ],"\n") 
-    covs = join([
-        raw"\begin{vmatrix}", 
-        join( [
-            join( [ pre*fmtrfunc(covariance(uvs, lbl1, lbl2))*post for lbl1 in lbls ], " & ") 
-                for lbl2 in lbls ], " \\\\\n"),
-        raw"\end{vmatrix}" ],"\n")
-    return latexstring("$ls\n=$vals\n\\pm\n$covs")
 end
