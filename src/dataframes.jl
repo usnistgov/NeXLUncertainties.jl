@@ -1,3 +1,5 @@
+using .DataFrames
+
 # Support for DataFrames.jl
 
 """
@@ -25,3 +27,4 @@ function asa( #
     end
     return df
 end
+
