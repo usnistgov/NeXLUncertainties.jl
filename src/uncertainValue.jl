@@ -209,7 +209,7 @@ value(uv::UncertainValue) = uv.value
 
 Returns f
 """
-value(f::Real) = Float64(f)
+value(f::Real) = f
 value(m::Missing) = m
 
 """
