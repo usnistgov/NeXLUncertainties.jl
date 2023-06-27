@@ -211,6 +211,8 @@ Returns f
 value(f::Real) = f
 value(m::Missing) = m
 
+Base.Float64(uv::UncertainValue) = uv.value
+
 """
     pearson(uv1::UncertainValue, uv2::UncertainValue, covar::Real)
 
