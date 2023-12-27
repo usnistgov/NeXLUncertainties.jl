@@ -1,13 +1,20 @@
-using .DataFrames
+module NeXLUncertaintiesDataFramesExt
 
-# Support for DataFrames.jl
+using DataFrames
+using NeXLUncertainties
 
 """
-`asa(::Type{DataFrame}, lv::LabeledValues)` extracts a `LabeledValues` object into a `DataFrame` in Label and Value columns.
+    NeXLUncertainties.asa(::Type{DataFrame}, lv::LabeledValues)
+    NeXLUncertainties.asa( #
+       ::Type{DataFrame},
+       uvss::UncertainValues,
+       withCovars = true,
+    )::DataFrame
 """
-asa(::Type{DataFrame}, lv::LabeledValues) = DataFrame( Label = labels(lv), Value = values(lv))
-
-function asa( #
+NeXLUncertainties.asa(::Type{DataFrame}, lv::LabeledValues) = DataFrame( Label = labels(lv), Value = values(lv))
+"""
+"""
+function NeXLUncertainties.asa( #
     ::Type{DataFrame},
     uvss::UncertainValues,
     withCovars = true,
@@ -28,3 +35,4 @@ function asa( #
     return df
 end
 
+end # module
