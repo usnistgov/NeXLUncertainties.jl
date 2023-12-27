@@ -1,4 +1,6 @@
-using .LaTeXStrings
+module NeXLUncertaintiesLaTeXStringsExt
+
+using LaTeXStrings, NeXLUncertainties, Printf
 
 """
     LaTeXStrings.latexstring(uv::UncertainValue; fmt=nothing, mode=:normal[|:siunitx])::LaTeXString
@@ -52,3 +54,5 @@ function LaTeXStrings.latexstring(uvs::UncertainValues; fmt="%0.3f", mode=:norma
         raw"\end{vmatrix}" ],"\n")
     return latexstring("$ls\n=$vals\n\\pm\n$covs")
 end
+
+end # module

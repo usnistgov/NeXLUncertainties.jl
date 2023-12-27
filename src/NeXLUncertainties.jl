@@ -1,7 +1,5 @@
 module NeXLUncertainties
 
-using Requires
-
 include("uncertainValue.jl")
 export UncertainValue # A simple value with uncertainty
 export uv # Constructs an UncertainValue from values v,σ
@@ -55,10 +53,5 @@ export MMResult
 
 # So that there is always a function named asa event when DataFrames isn't loaded
 function asa end
-
-function __init__()
-    @require DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0" include("dataframes.jl")
-    @require LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f" include("latexstrings.jl")
-end
 
 end
