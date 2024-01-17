@@ -2,7 +2,7 @@ name = "NeXLUncertainties"
 uuid = "7127f3d6-1721-46bc-bb38-8fc703dd438e"
 authors = ["Nicholas W.M. Ritchie <nicholas.ritchie@nist.gov>"]
 repo-url = "https://github.com/usnistgov/NeXLUncertainties.jl"
-version = "0.2.13"
+version = "0.2.14"
 
 [deps]
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
