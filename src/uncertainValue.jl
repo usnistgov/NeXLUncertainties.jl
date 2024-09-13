@@ -337,7 +337,7 @@ end
 
 function _showstr(uv::UncertainValue, pm::AbstractString)
     smin = max(uv.sigma, 1.0e-6 * abs(uv.value), 1.0e-10)
-    ls, lr = map(v -> floor(Int, log10(abs(v))), ( smin, max(1.0e-10, uv.value / smin)))
+    ls, lr = map(v -> floor(Int, log10(abs(v))), ( smin, max(1.0e-10, abs(uv.value) / smin)))
     return if (ls < -4) || (ls > 6)
         if lr < 1
             @sprintf("%0.1e %s %0.1e", uv.value, pm, uv.sigma)

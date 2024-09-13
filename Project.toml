@@ -2,7 +2,7 @@ name = "NeXLUncertainties"
 uuid = "7127f3d6-1721-46bc-bb38-8fc703dd438e"
 authors = ["Nicholas W.M. Ritchie <nicholas.ritchie@nist.gov>"]
 repo-url = "https://github.com/usnistgov/NeXLUncertainties.jl"
-version = "0.2.14"
+version = "0.2.15-dev"
 
 [deps]
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
@@ -26,8 +26,6 @@ NeXLUncertaintiesDataFramesExt = "DataFrames"
 NeXLUncertaintiesLaTeXStringsExt = "LaTeXStrings"
 
 [extras]
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Weave = "44d3d7a6-8a23-5bf8-98c5-b353f8df5ec9"
 

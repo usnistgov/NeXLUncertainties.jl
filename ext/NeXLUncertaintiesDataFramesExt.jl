@@ -4,21 +4,12 @@ using DataFrames
 using NeXLUncertainties
 
 """
-    NeXLUncertainties.asa(::Type{DataFrame}, lv::LabeledValues)
-    NeXLUncertainties.asa( #
-       ::Type{DataFrame},
-       uvss::UncertainValues,
-       withCovars = true,
-    )::DataFrame
+    DataFrames.DataFrame(::Type{DataFrame}, lv::LabeledValues)
+    DataFrames.DataFrame(uvss::UncertainValues, withCovars = true)
 """
-NeXLUncertainties.asa(::Type{DataFrame}, lv::LabeledValues) = DataFrame( Label = labels(lv), Value = values(lv))
-"""
-"""
-function NeXLUncertainties.asa( #
-    ::Type{DataFrame},
-    uvss::UncertainValues,
-    withCovars = true,
-)::DataFrame
+DataFrames.DataFrame(::Type{DataFrame}, lv::LabeledValues) = DataFrames.DataFrame( Label = labels(lv), Value = values(lv))
+
+function DataFrames.DataFrame(uvss::UncertainValues, withCovars = true)::DataFrame 
     lbls = labels(uvss)
     df = DataFrame(Variable = map(lbl -> "$lbl", lbls), Values = map(lbl -> value(uvss, lbl), lbls))
     if withCovars
@@ -34,5 +25,17 @@ function NeXLUncertainties.asa( #
     end
     return df
 end
+
+"""
+Depreciated:
+    NeXLUncertainties.asa(::Type{DataFrame}, uvss::UncertainValues, withCovars = true) (depreciated) use DataFrames.DataFrame(uvss::UncertainValues, withCovars = true)
+    NeXLUncertainties.asa(::Type{DataFrame}, lv::LabeledValues) use DataFrames.DataFrame(lv::LabeledValues)
+"""
+NeXLUncertainties.asa(::Type{DataFrame}, lv::LabeledValues) = DataFrames.DataFrame(lv)
+NeXLUncertainties.asa( #
+    ::Type{DataFrame},
+    uvss::UncertainValues,
+    withCovars = true,
+) = DataFrames.DataFrame(uvss, withCovars)
 
 end # module
